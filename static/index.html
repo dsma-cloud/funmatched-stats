@@ -17,7 +17,7 @@ Funmatched Stats
 </title>
 
 
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="/static/style.css">
 
 
 <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
@@ -201,25 +201,29 @@ Funmatched Stats
 
 <script>
 
+if (window.vkBridge) {
 
-if(window.vkBridge){
+    vkBridge.send("VKWebAppInit")
+        .then(() => {
+            console.log("VK Bridge initialized");
+        })
+        .catch((error) => {
+            console.error("VK Bridge error:", error);
+        });
 
 
     vkBridge.send(
-    "VKWebAppResizeWindow",
-    {
-        height: 900
-    }
-);
+        "VKWebAppResizeWindow",
+        {
+            height: 900
+        }
+    );
 
+}
 
 </script>
 
-
-
-
-<script src="app.js"></script>
-
+<script src="/static/app.js"></script>
 
 
 </body>
