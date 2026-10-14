@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+
+<html lang="ru">
+
+
+<head>
+
+
+<meta charset="UTF-8">
+
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+
+<title>
+Funmatched Stats
+</title>
+
+
+<link rel="stylesheet" href="style.css">
+
+
+<script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+
+
+</head>
+
+
+
+<body>
+
+
+
+<!-- =========================
+     Последний матч
+========================= -->
+
+
+<div class="top-dashboard">
+
+
+<div class="card last">
+
+
+<h2>
+🎲 Последний матч
+</h2>
+
+
+<div id="match">
+
+Загрузка...
+
+</div>
+
+
+</div>
+
+
+
+
+
+<div class="card stats">
+
+
+<h2>
+📊 Статистика
+</h2>
+
+
+<div id="stats">
+
+Загрузка...
+
+</div>
+
+
+
+<button id="addMatch">
+
+➕ Добавить матч
+
+</button>
+
+
+<button id="allRatings">
+
+📊 Все рейтинги
+
+</button>
+
+
+</div>
+
+
+</div>
+
+
+
+
+
+
+<!-- =========================
+     Герои
+========================= -->
+
+
+<div class="card heroes">
+
+
+<h2>
+⚔️ Рейтинг героев
+</h2>
+
+
+
+<div id="heroGroups">
+
+Загрузка...
+
+</div>
+
+
+
+</div>
+
+
+
+
+
+
+
+<!-- =========================
+     Игроки + Поля
+========================= -->
+
+
+<div class="bottom-ratings">
+
+
+
+
+
+<div class="card players">
+
+
+<h2>
+🏆 Игроки
+</h2>
+
+
+
+<div id="players">
+
+Загрузка...
+
+</div>
+
+
+
+</div>
+
+
+
+
+
+
+
+
+<div class="card maps">
+
+
+<h2>
+🗺 Поля
+</h2>
+
+
+
+<div id="maps">
+
+Загрузка...
+
+</div>
+
+
+
+</div>
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+<script>
+
+
+if(window.vkBridge){
+
+
+    vkBridge.send(
+    "VKWebAppResizeWindow",
+    {
+        height: 900
+    }
+);
+
+
+</script>
+
+
+
+
+<script src="app.js"></script>
+
+
+
+</body>
+
+
+</html>

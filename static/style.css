@@ -1,0 +1,531 @@
+/* =========================
+   Основное
+========================= */
+
+
+body {
+
+    margin: 0;
+
+    padding: 10px;
+
+    font-family: Arial, sans-serif;
+
+    background: #f2f3f5;
+
+    color: #222;
+
+}
+
+
+
+/* =========================
+   Заголовок
+========================= */
+
+
+.header {
+
+    text-align: center;
+
+    margin-bottom: 12px;
+
+}
+
+
+
+h1 {
+
+    font-size: 22px;
+
+    margin: 8px 0;
+
+}
+
+
+
+button {
+
+    background: #2688eb;
+
+    color: white;
+
+    border: none;
+
+    border-radius: 12px;
+
+    padding: 10px 18px;
+
+    font-size: 15px;
+
+    cursor: pointer;
+
+}
+
+
+
+
+
+/* =========================
+   Верхний блок
+========================= */
+
+
+.top-dashboard {
+
+    display: flex;
+
+    gap: 10px;
+
+}
+
+
+
+.top-dashboard .last {
+
+    flex: 2;
+
+}
+
+
+
+.stats {
+
+    flex: 1;
+
+    border-top: 4px solid #2ecc71;
+
+}
+
+
+
+.stats h2 {
+
+    text-align: center;
+
+}
+
+
+
+#stats {
+
+    margin-bottom: 10px;
+
+}
+
+
+
+.stat-item {
+
+    padding: 6px;
+
+    font-size: 14px;
+
+}
+
+
+
+/* кнопки под статистикой */
+
+.stats button {
+
+    width: 100%;
+
+    display: block;
+
+    margin-top: 10px;
+
+}
+
+
+
+#allRatings {
+
+    background: #9b59b6;
+
+}
+
+
+
+
+
+/* =========================
+   Общие карточки
+========================= */
+
+
+.card {
+
+    background: white;
+
+    border-radius: 16px;
+
+    padding: 12px;
+
+    margin-bottom: 12px;
+
+}
+
+
+
+.card h2 {
+
+    text-align: center;
+
+    font-size: 18px;
+
+    margin: 5px 0 12px;
+
+}
+
+
+
+
+
+/* =========================
+   Последний матч
+========================= */
+
+
+.last {
+
+    border-top: 4px solid #f1c40f;
+
+}
+
+
+
+#match {
+
+    text-align: center;
+
+}
+
+
+
+.match-player {
+
+    font-size: 16px;
+
+    line-height: 1.5;
+
+}
+
+
+
+.vs {
+
+    font-size: 22px;
+
+    font-weight: bold;
+
+    margin: 8px;
+
+}
+
+
+
+.match-info {
+
+    margin-top: 10px;
+
+    text-align: center;
+
+    font-size: 14px;
+
+}
+
+
+
+.winner {
+
+    margin-top: 10px;
+
+    font-weight: bold;
+
+}
+
+
+
+
+
+/* =========================
+   Герои
+========================= */
+
+
+.heroes {
+
+    border-top: 4px solid #e74c3c;
+
+}
+
+
+
+.hero-group {
+
+    background: #fafafa;
+
+    border-radius: 12px;
+
+    margin-bottom: 10px;
+
+    overflow: hidden;
+
+}
+
+
+
+.hero-group summary {
+
+    cursor: pointer;
+
+    padding: 10px;
+
+    font-size: 15px;
+
+    font-weight: bold;
+
+    list-style: none;
+
+}
+
+
+
+.hero-group summary span {
+
+    opacity: .7;
+
+    font-weight: normal;
+
+}
+
+
+
+.hero-list {
+
+    max-height: 300px;
+
+    overflow-y: auto;
+
+}
+
+
+
+.hero-item {
+
+    padding: 7px;
+
+    border-top: 1px solid #eee;
+
+    font-size: 13px;
+
+    line-height: 1.2;
+
+}
+
+
+
+.meta {
+
+    border-left: 5px solid gold;
+
+}
+
+
+
+.strong {
+
+    border-left: 5px solid #2ecc71;
+
+}
+
+
+
+.stable {
+
+    border-left: 5px solid #3498db;
+
+}
+
+
+
+.other {
+
+    border-left: 5px solid #777;
+
+}
+
+
+
+
+
+/* =========================
+   Игроки + Поля
+========================= */
+
+
+.bottom-ratings {
+
+    display:flex;
+
+    gap:10px;
+
+}
+
+
+
+.bottom-ratings .card {
+
+    flex:1;
+
+    height:300px;
+
+    overflow-y:auto;
+
+}
+
+
+
+.players {
+
+    border-top:4px solid #3498db;
+
+}
+
+
+
+.maps {
+
+    border-top:4px solid #9b59b6;
+
+}
+
+
+
+.players h2,
+.maps h2 {
+
+    position: sticky;
+
+    top:0;
+
+    background:white;
+
+    z-index:5;
+
+    padding:6px 0;
+
+}
+
+
+
+
+
+/* =========================
+   Строки рейтингов
+========================= */
+
+
+.item {
+
+    padding:7px 4px;
+
+    border-bottom:1px solid #eee;
+
+    font-size:13px;
+
+    line-height:1.2;
+
+}
+
+
+
+.rank {
+
+    font-size:14px;
+
+    font-weight:bold;
+
+}
+
+
+
+
+
+/* =========================
+   ТОП-3
+========================= */
+
+
+.top1 {
+
+    background:#fff3cd;
+
+    border-radius:8px;
+
+}
+
+
+
+.top2 {
+
+    background:#eeeeee;
+
+    border-radius:8px;
+
+}
+
+
+
+.top3 {
+
+    background:#f8e1d4;
+
+    border-radius:8px;
+
+}
+
+
+
+
+
+/* =========================
+   Мобильный вид
+========================= */
+
+
+@media(max-width:700px){
+
+
+    body {
+
+        padding:8px;
+
+    }
+
+
+
+    .top-dashboard {
+
+        flex-direction:row;
+
+    }
+
+
+
+    .bottom-ratings {
+
+        flex-direction:row;
+
+    }
+
+
+
+    .bottom-ratings .card {
+
+        height:300px;
+
+    }
+
+}
