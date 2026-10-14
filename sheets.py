@@ -1,13 +1,10 @@
 import os
 import json
+import base64
 import gspread
 
 from google.oauth2.service_account import Credentials
 
-
-# =========================
-# Google API настройки
-# =========================
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -15,26 +12,19 @@ SCOPES = [
 ]
 
 
-# =========================
-# Авторизация Google
-# Локально: credentials.json
-# Render: GOOGLE_CREDENTIALS
-# =========================
-
-credentials_json = os.environ.get(
-    "GOOGLE_CREDENTIALS"
-)
-
-
-if credentials_json:
+if os.getenv("GOOGLE_CREDENTIALS_BASE64"):
+    info = json.loads(
+        base64.b64decode(
+            os.getenv("GOOGLE_CREDENTIALS_BASE64")
+        )
+    )
 
     creds = Credentials.from_service_account_info(
-        json.loads(credentials_json),
+        info,
         scopes=SCOPES
     )
 
 else:
-
     creds = Credentials.from_service_account_file(
         "credentials.json",
         scopes=SCOPES
