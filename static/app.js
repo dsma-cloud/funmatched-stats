@@ -586,7 +586,7 @@ ${index + 1}. ${map.map}
     const option = event.target.closest("button[data-open-report]");
     if (!option) return;
     const targetId = option.dataset.openReport;
-    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection").forEach(section => {
+    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection, #playerRating7DaysSection").forEach(section => {
       section.hidden = section.id !== targetId;
     });
     menu.hidden = true;
@@ -596,6 +596,7 @@ ${index + 1}. ${map.map}
     if (targetId === "playerReportSection") document.getElementById("playerSearchInput")?.focus({ preventScroll: true });
     if (targetId === "heroHeadToHeadSection") document.getElementById("headToHeadHero1")?.focus({ preventScroll: true });
     if (targetId === "playerHeadToHeadSection") document.getElementById("headToHeadPlayer1")?.focus({ preventScroll: true });
+    if (targetId === "playerRating7DaysSection") loadPlayerRating7Days();
   });
 
   document.querySelectorAll("[data-close-report]").forEach(button => {
@@ -883,8 +884,21 @@ loadDashboard();
           ${statCard(report.hero2, report.stats2)}
         </div>
         <section class="hero-match-group"><h3>Все матчи между героями <span>${report.matches.length}</span></h3>
-          ${report.matches.length ? report.matches.map(renderMatch).join("") : '<p class="hero-empty">В таблице Matches пока нет матчей между этими героями.</p>'}
+          ${report.matches.length ? `<div class="hero-head-to-head-scroll">${report.matches.map(renderMatch).join("")}</div>` : '<p class="hero-empty">В таблице Matches пока нет матчей между этими героями.</p>'}
         </section>`;
+      // В противостоянии двух героев показываем 3 матча, остальные доступны прокруткой.
+      const matchScroll = results.querySelector(".hero-head-to-head-scroll");
+      if (matchScroll) {
+        const rows = matchScroll.querySelectorAll(".hero-match-row");
+        if (rows.length > 3) {
+          const first = rows[0].getBoundingClientRect().top;
+          const third = rows[2].getBoundingClientRect().bottom;
+          matchScroll.style.maxHeight = `${Math.ceil(third - first + 2)}px`;
+          matchScroll.style.overflowY = "auto";
+          matchScroll.style.overscrollBehavior = "contain";
+          matchScroll.style.paddingRight = "4px";
+        }
+      }
     } catch (error) {
       results.innerHTML = `<p class="hero-empty">${escapeHtml(error.message || "Не удалось загрузить отчёт. Попробуйте ещё раз.")}</p>`;
     }
@@ -970,22 +984,45 @@ loadDashboard();
           ${statCard(report.player2, report.stats2)}
         </div>
         <section class="hero-match-group"><h3>Все матчи между игроками <span>${report.matches.length}</span></h3>
-          ${report.matches.length ? `<div class="player-head-to-head-match-scroll">${report.matches.map(match => renderMatch(match, match.result_for_player1)).join("")}</div>` : '<p class="hero-empty">В таблице Matches пока нет матчей между этими игроками.</p>'}
+          ${report.matches.length ? report.matches.map(match => renderMatch(match, match.result_for_player1)).join("") : '<p class="hero-empty">В таблице Matches пока нет матчей между этими игроками.</p>'}
         </section>`;
-      const matchScroll = results.querySelector(".player-head-to-head-match-scroll");
-      if (matchScroll) {
-        const rows = matchScroll.querySelectorAll(".hero-match-row");
-        if (rows.length > 3) {
-          const firstTop = rows[0].getBoundingClientRect().top;
-          const thirdBottom = rows[2].getBoundingClientRect().bottom;
-          matchScroll.style.maxHeight = `${Math.ceil(thirdBottom - firstTop + 2)}px`;
-          matchScroll.style.overflowY = "auto";
-          matchScroll.style.overscrollBehavior = "contain";
-          matchScroll.style.paddingRight = "4px";
-        }
-      }
     } catch (error) {
       results.innerHTML = `<p class="hero-empty">${escapeHtml(error.message || "Не удалось загрузить отчёт. Попробуйте ещё раз.")}</p>`;
     }
   }
 })();
+
+
+// =========================
+// Рейтинг игроков за последние 7 дней
+// =========================
+async function loadPlayerRating7Days() {
+  const results = document.getElementById("playerRating7DaysResults");
+  const period = document.getElementById("playerRating7DaysPeriod");
+  if (!results) return;
+  results.innerHTML = '<p>Загрузка рейтинга…</p>';
+  try {
+    const response = await fetch("/api/player_rating_last_7_days");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Не удалось загрузить рейтинг.");
+    const formatDate = value => {
+      const parts = (value || "").split("-");
+      return parts.length === 3 ? `${parts[2]}.${parts[1]}.${parts[0]}` : value;
+    };
+    if (period) period.textContent = `Период: ${formatDate(data.from)} — ${formatDate(data.to)}. Сначала игроки с большим числом побед; при равенстве учитывается процент побед.`;
+    if (!data.players || !data.players.length) {
+      results.innerHTML = '<p class="hero-empty">За последние 7 дней матчей не найдено.</p>';
+      return;
+    }
+    const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[char]));
+    results.innerHTML = `
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;min-width:420px">
+          <thead><tr><th style="text-align:left;padding:10px 8px">#</th><th style="text-align:left;padding:10px 8px">Игрок</th><th style="padding:10px 8px">Игры</th><th style="padding:10px 8px">Победы</th><th style="padding:10px 8px">Поражения</th><th style="padding:10px 8px">% побед</th></tr></thead>
+          <tbody>${data.players.map((player, index) => `<tr style="border-top:1px solid #8883"><td style="padding:10px 8px">${index + 1}</td><td style="padding:10px 8px">${escapeHtml(player.player)}</td><td style="text-align:center;padding:10px 8px">${player.games}</td><td style="text-align:center;padding:10px 8px">${player.wins}</td><td style="text-align:center;padding:10px 8px">${player.losses}</td><td style="text-align:center;padding:10px 8px">${player.winrate}%</td></tr>`).join("")}</tbody>
+        </table>
+      </div>`;
+  } catch (error) {
+    results.innerHTML = `<p class="hero-empty">${String(error.message || "Ошибка загрузки рейтинга.")}</p>`;
+  }
+}

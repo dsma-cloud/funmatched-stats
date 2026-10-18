@@ -1,6 +1,7 @@
 import os
 import json
 import base64
+from datetime import date, datetime, timedelta
 import gspread
 
 from google.oauth2.service_account import Credentials
@@ -618,3 +619,63 @@ def player_head_to_head_report(player1_name, player2_name):
     stats1 = {"games": total, "wins": wins1, "losses": wins2, "unresolved": unresolved, "winrate": round(wins1 / decided * 100, 1) if decided else 0}
     stats2 = {"games": total, "wins": wins2, "losses": wins1, "unresolved": unresolved, "winrate": round(wins2 / decided * 100, 1) if decided else 0}
     return {"player1": player1_name, "player2": player2_name, "stats1": stats1, "stats2": stats2, "matches": matches}
+
+
+# =========================
+# Рейтинг игроков за последние 7 дней
+# =========================
+def player_rating_last_7_days():
+    """Рейтинг по матчам за последние 7 календарных дней, включая сегодня."""
+    today = date.today()
+    first_day = today - timedelta(days=6)
+    rows = get_sheet("Matches").get_all_values()
+    stats = {}
+
+    def parse_match_date(value):
+        value = (value or "").strip()
+        if not value:
+            return None
+        # Google Sheets / HTML date input commonly use ISO; support common display formats too.
+        for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d"):
+            try:
+                return datetime.strptime(value[:10], fmt).date()
+            except ValueError:
+                pass
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+        except ValueError:
+            return None
+
+    for row in rows[1:]:
+        row = row + [""] * max(0, 8 - len(row))
+        _, match_date, player1, _, player2, _, _, winner = row[:8]
+        parsed_date = parse_match_date(match_date)
+        if parsed_date is None or not (first_day <= parsed_date <= today):
+            continue
+        p1, p2 = player1.strip(), player2.strip()
+        if not p1 or not p2:
+            continue
+        for player in {p1, p2}:
+            if player not in stats:
+                stats[player] = {"player": player, "games": 0, "wins": 0, "losses": 0, "unresolved": 0}
+            stats[player]["games"] += 1
+
+        winner_text = winner.strip().casefold()
+        p1_won = winner_text in {"player 1", "player1", "1", p1.casefold()}
+        p2_won = winner_text in {"player 2", "player2", "2", p2.casefold()}
+        if p1_won and not p2_won:
+            stats[p1]["wins"] += 1
+            stats[p2]["losses"] += 1
+        elif p2_won and not p1_won:
+            stats[p2]["wins"] += 1
+            stats[p1]["losses"] += 1
+        else:
+            stats[p1]["unresolved"] += 1
+            stats[p2]["unresolved"] += 1
+
+    result = list(stats.values())
+    for item in result:
+        decided = item["wins"] + item["losses"]
+        item["winrate"] = round(item["wins"] / decided * 100, 1) if decided else 0
+    result.sort(key=lambda item: (item["wins"], item["winrate"], item["games"], item["player"].casefold()), reverse=True)
+    return {"from": first_day.isoformat(), "to": today.isoformat(), "players": result}

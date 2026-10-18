@@ -90,6 +90,7 @@ Funmatched Stats
     <button type="button" data-open-report="playerReportSection">🏆 Карточка игрока</button>
     <button type="button" data-open-report="heroHeadToHeadSection">⚔️ Противостояние двух героев</button>
      <button type="button" data-open-report="playerHeadToHeadSection">🏆 Противостояние двух игроков</button>
+    <button type="button" data-open-report="playerRating7DaysSection">📈 Рейтинг игроков за 7 дней</button>
   </div>
 </div>
 
@@ -244,6 +245,14 @@ Funmatched Stats
     </div>
   </div>
   <div id="playerHeadToHeadResults" aria-live="polite"><p>Выберите двух разных игроков.</p></div>
+</section>
+
+
+<section class="card hero-report" id="playerRating7DaysSection" hidden>
+  <button type="button" class="report-close" data-close-report="playerRating7DaysSection" aria-label="Закрыть отчёт">✕</button>
+  <h2>📈 Рейтинг игроков за последние 7 дней</h2>
+  <p class="report-description" id="playerRating7DaysPeriod">Рейтинг обновляется по данным матчей за последние 7 календарных дней, включая сегодня.</p>
+  <div id="playerRating7DaysResults" aria-live="polite"><p>Загрузка рейтинга…</p></div>
 </section>
 
 <style>
