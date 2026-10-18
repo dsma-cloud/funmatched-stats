@@ -756,7 +756,7 @@ loadDashboard();
       const report = await response.json();
       if (!response.ok) throw new Error(report.error || "Ошибка загрузки отчёта");
       const stats = report.stats;
-      const group = (title, count, list, icon) => `<section class="hero-match-group"><h3>${icon} ${title}<span>${count}</span></h3>${list.length ? list.map(renderMatch).join("") : '<p class="hero-empty">Матчей в этой группе пока нет.</p>'}</section>`;
+      const group = (title, count, list, icon) => `<section class="hero-match-group"><h3>${icon} ${title}<span>${count}</span></h3>${list.length ? `<div class="player-match-scroll">${list.map(renderMatch).join("")}</div>` : '<p class="hero-empty">Матчей в этой группе пока нет.</p>'}</section>`;
       const favoriteHero = report.favorite_hero ? `${escapeHtml(report.favorite_hero.name)} — ${report.favorite_hero.games} игр` : "Нет данных";
       const favoriteMap = report.favorite_map ? `${escapeHtml(report.favorite_map.name)} — ${report.favorite_map.games} игр` : "Нет данных";
       results.innerHTML = `
@@ -773,6 +773,18 @@ loadDashboard();
         ${group("Проигрыши", stats.losses, report.losses, "❌")}
         ${stats.unresolved ? group("Не удалось определить результат", stats.unresolved, report.unresolved, "❔") : ""}
       `;
+      // Ограничиваем каждый список высотой первых 10 карточек.
+      results.querySelectorAll(".player-match-scroll").forEach(container => {
+        const rows = container.querySelectorAll(".hero-match-row");
+        if (rows.length > 10) {
+          const first = rows[0].getBoundingClientRect().top;
+          const tenth = rows[9].getBoundingClientRect().bottom;
+          container.style.maxHeight = `${Math.ceil(tenth - first + 2)}px`;
+          container.style.overflowY = "auto";
+          container.style.overscrollBehavior = "contain";
+          container.style.paddingRight = "4px";
+        }
+      });
     } catch (error) {
       results.innerHTML = '<p class="hero-empty">Не удалось загрузить карточку игрока. Проверьте соединение и попробуйте ещё раз.</p>';
     }
