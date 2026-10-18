@@ -11,7 +11,8 @@ from sheets import (
     search_players,
     search_heroes,
     search_maps,
-    hero_match_report
+    hero_match_report,
+    player_match_report
 )
 
 
@@ -137,6 +138,28 @@ def hero_report():
     if not hero:
         return jsonify({"error": "Укажите героя"}), 400
     return jsonify(hero_match_report(hero))
+
+
+# =========================
+# Поиск игрока для карточки игрока
+# =========================
+@app.route("/api/player_search")
+def player_search():
+    query = request.args.get("q", "").strip()
+    if len(query) < 2:
+        return jsonify([])
+    return jsonify(search_players(query)[:20])
+
+
+# =========================
+# Карточка игрока
+# =========================
+@app.route("/api/player_report")
+def player_report():
+    player = request.args.get("player", "").strip()
+    if not player:
+        return jsonify({"error": "Укажите игрока"}), 400
+    return jsonify(player_match_report(player))
 
 
 # =========================

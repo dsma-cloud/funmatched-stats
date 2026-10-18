@@ -426,3 +426,76 @@ def hero_match_report(hero_name):
         },
         "wins": wins, "losses": losses, "unresolved": unresolved
     }
+
+
+# =========================
+# Карточка выбранного игрока
+# =========================
+def player_match_report(player_name):
+    """Возвращает статистику игрока, наиболее частые героя/поле и его матчи."""
+    player_name = (player_name or "").strip()
+    if not player_name:
+        return {"player": "", "stats": {"games": 0, "wins": 0, "losses": 0, "unresolved": 0, "winrate": 0}, "favorite_hero": None, "favorite_map": None, "wins": [], "losses": [], "unresolved": []}
+
+    rows = get_sheet("Matches").get_all_values()
+    wins, losses, unresolved = [], [], []
+    hero_counts, map_counts = {}, {}
+    target = player_name.casefold()
+
+    # Matches columns: ID, Date, Player1, Hero1, Player2, Hero2, Map, Winner, Duration, Notes
+    for row in rows[1:]:
+        row = row + [""] * max(0, 10 - len(row))
+        match_id, date, player1, hero1, player2, hero2, map_name, winner = row[:8]
+        p1_match = player1.strip().casefold() == target
+        p2_match = player2.strip().casefold() == target
+        if not p1_match and not p2_match:
+            continue
+
+        # В редком случае, когда имя указано с обеих сторон, учитываем сторону Player 1.
+        side = 1 if p1_match else 2
+        played_hero = hero1 if side == 1 else hero2
+        if played_hero.strip():
+            hero_counts[played_hero.strip()] = hero_counts.get(played_hero.strip(), 0) + 1
+        if map_name.strip():
+            map_counts[map_name.strip()] = map_counts.get(map_name.strip(), 0) + 1
+
+        winner_text = winner.strip().casefold()
+        player1_text = player1.strip().casefold()
+        player2_text = player2.strip().casefold()
+        won_side = 0
+        if winner_text in {"player 1", "player1", "1", player1_text} and winner_text:
+            won_side = 1
+        elif winner_text in {"player 2", "player2", "2", player2_text} and winner_text:
+            won_side = 2
+
+        item = {
+            "id": match_id, "date": date,
+            "player1": player1, "hero1": hero1,
+            "player2": player2, "hero2": hero2,
+            "map": map_name, "winner": winner,
+            "player_hero": played_hero,
+            "opponent": player2 if side == 1 else player1,
+            "opponent_hero": hero2 if side == 1 else hero1,
+        }
+        if not won_side:
+            unresolved.append(item)
+        elif won_side == side:
+            wins.append(item)
+        else:
+            losses.append(item)
+
+    games = len(wins) + len(losses) + len(unresolved)
+    decided = len(wins) + len(losses)
+    favorite_hero = max(hero_counts.items(), key=lambda pair: pair[1]) if hero_counts else None
+    favorite_map = max(map_counts.items(), key=lambda pair: pair[1]) if map_counts else None
+    return {
+        "player": player_name,
+        "stats": {
+            "games": games, "wins": len(wins), "losses": len(losses),
+            "unresolved": len(unresolved),
+            "winrate": round(len(wins) / decided * 100, 1) if decided else 0
+        },
+        "favorite_hero": {"name": favorite_hero[0], "games": favorite_hero[1]} if favorite_hero else None,
+        "favorite_map": {"name": favorite_map[0], "games": favorite_map[1]} if favorite_map else None,
+        "wins": wins, "losses": losses, "unresolved": unresolved
+    }
