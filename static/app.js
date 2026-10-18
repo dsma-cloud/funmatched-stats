@@ -691,13 +691,13 @@ loadDashboard();
         ${group("Поражения героя", stats.losses, report.losses, "❌")}
         ${stats.unresolved ? group("Не удалось определить результат", stats.unresolved, report.unresolved, "❔") : ""}
       `;
-      // В карточке героя показываем 5 матчей, остальные доступны прокруткой.
+      // В карточке героя показываем 3 матча, остальные доступны прокруткой.
       results.querySelectorAll(".hero-match-scroll").forEach(container => {
         const rows = container.querySelectorAll(".hero-match-row");
-        if (rows.length > 5) {
+        if (rows.length > 3) {
           const first = rows[0].getBoundingClientRect().top;
-          const fifth = rows[4].getBoundingClientRect().bottom;
-          container.style.maxHeight = `${Math.ceil(fifth - first + 2)}px`;
+          const third = rows[2].getBoundingClientRect().bottom;
+          container.style.maxHeight = `${Math.ceil(third - first + 2)}px`;
           container.style.overflowY = "auto";
           container.style.overscrollBehavior = "contain";
           container.style.paddingRight = "4px";
@@ -786,13 +786,13 @@ loadDashboard();
         ${group("Проигрыши", stats.losses, report.losses, "❌")}
         ${stats.unresolved ? group("Не удалось определить результат", stats.unresolved, report.unresolved, "❔") : ""}
       `;
-      // Ограничиваем каждый список высотой первых 5 карточек.
+      // В списках побед и поражений показываем 3 матча, остальные доступны через прокрутку.
       results.querySelectorAll(".player-match-scroll").forEach(container => {
         const rows = container.querySelectorAll(".hero-match-row");
-        if (rows.length > 5) {
+        if (rows.length > 3) {
           const first = rows[0].getBoundingClientRect().top;
-          const fifth = rows[4].getBoundingClientRect().bottom;
-          container.style.maxHeight = `${Math.ceil(fifth - first + 2)}px`;
+          const third = rows[2].getBoundingClientRect().bottom;
+          container.style.maxHeight = `${Math.ceil(third - first + 2)}px`;
           container.style.overflowY = "auto";
           container.style.overscrollBehavior = "contain";
           container.style.paddingRight = "4px";
@@ -970,8 +970,20 @@ loadDashboard();
           ${statCard(report.player2, report.stats2)}
         </div>
         <section class="hero-match-group"><h3>Все матчи между игроками <span>${report.matches.length}</span></h3>
-          ${report.matches.length ? report.matches.map(match => renderMatch(match, match.result_for_player1)).join("") : '<p class="hero-empty">В таблице Matches пока нет матчей между этими игроками.</p>'}
+          ${report.matches.length ? `<div class="player-head-to-head-match-scroll">${report.matches.map(match => renderMatch(match, match.result_for_player1)).join("")}</div>` : '<p class="hero-empty">В таблице Matches пока нет матчей между этими игроками.</p>'}
         </section>`;
+      const matchScroll = results.querySelector(".player-head-to-head-match-scroll");
+      if (matchScroll) {
+        const rows = matchScroll.querySelectorAll(".hero-match-row");
+        if (rows.length > 3) {
+          const firstTop = rows[0].getBoundingClientRect().top;
+          const thirdBottom = rows[2].getBoundingClientRect().bottom;
+          matchScroll.style.maxHeight = `${Math.ceil(thirdBottom - firstTop + 2)}px`;
+          matchScroll.style.overflowY = "auto";
+          matchScroll.style.overscrollBehavior = "contain";
+          matchScroll.style.paddingRight = "4px";
+        }
+      }
     } catch (error) {
       results.innerHTML = `<p class="hero-empty">${escapeHtml(error.message || "Не удалось загрузить отчёт. Попробуйте ещё раз.")}</p>`;
     }
