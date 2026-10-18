@@ -845,7 +845,7 @@ loadDashboard();
     if (state.hero1.toLowerCase() === state.hero2.toLowerCase()) {
       results.innerHTML = '<p class="hero-empty">Выберите двух разных героев.</p>'; return;
     }
-    results.innerHTML = '<p>Загружаем очные встречи…</p>';
+    results.innerHTML = '<p>Загружаем игры…</p>';
     try {
       const response = await fetch(`/api/hero_head_to_head?hero1=${encodeURIComponent(state.hero1)}&hero2=${encodeURIComponent(state.hero2)}`);
       const report = await response.json();
@@ -853,7 +853,7 @@ loadDashboard();
       const statCard = (hero, stats) => `<div class="hero-report-stat"><span>${escapeHtml(hero)} · Win Rate</span><strong>${String(stats.winrate).replace(".", ",")}%</strong><small>${stats.wins} побед · ${stats.losses} поражений</small></div>`;
       results.innerHTML = `
         <div class="hero-report-stats">
-          <div class="hero-report-stat"><span>Очных матчей</span><strong>${report.matches.length}</strong><small>${report.stats1.unresolved} с неопределённым результатом</small></div>
+          <div class="hero-report-stat"><span>Всего игр</span><strong>${report.matches.length}</strong><small>${report.stats1.unresolved}</small></div>
           ${statCard(report.hero1, report.stats1)}
           ${statCard(report.hero2, report.stats2)}
         </div>
