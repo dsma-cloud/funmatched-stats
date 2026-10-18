@@ -89,6 +89,7 @@ Funmatched Stats
     <button type="button" data-open-report="heroReportSection">⚔️ Карточка героя</button>
     <button type="button" data-open-report="playerReportSection">🏆 Карточка игрока</button>
     <button type="button" data-open-report="heroHeadToHeadSection">⚔️ Противостояние двух героев</button>
+     <button type="button" data-open-report="playerHeadToHeadSection">🏆 Противостояние двух игроков</button>
   </div>
 </div>
 
@@ -224,6 +225,25 @@ Funmatched Stats
     </div>
   </div>
   <div id="heroHeadToHeadResults" aria-live="polite"><p>Выберите двух разных героев.</p></div>
+</section>
+
+<section class="card hero-report" id="playerHeadToHeadSection" hidden>
+  <button type="button" class="report-close" data-close-report="playerHeadToHeadSection" aria-label="Закрыть отчёт">✕</button>
+  <h2>🏆 Противостояние двух игроков</h2>
+  <p class="report-description">Выберите двух игроков, чтобы сравнить результаты их очных встреч и посмотреть все матчи между ними.</p>
+  <div class="add-match-grid head-to-head-search-grid">
+    <div class="hero-search-wrap head-to-head-search-wrap">
+      <label for="headToHeadPlayer1">Игрок 1</label>
+      <input id="headToHeadPlayer1" type="search" placeholder="Поиск первого игрока…" autocomplete="off" aria-label="Поиск первого игрока">
+      <div id="headToHeadPlayer1Suggestions" class="hero-suggestions" hidden></div>
+    </div>
+    <div class="hero-search-wrap head-to-head-search-wrap">
+      <label for="headToHeadPlayer2">Игрок 2</label>
+      <input id="headToHeadPlayer2" type="search" placeholder="Поиск второго игрока…" autocomplete="off" aria-label="Поиск второго игрока">
+      <div id="headToHeadPlayer2Suggestions" class="hero-suggestions" hidden></div>
+    </div>
+  </div>
+  <div id="playerHeadToHeadResults" aria-live="polite"><p>Выберите двух разных игроков.</p></div>
 </section>
 
 <style>

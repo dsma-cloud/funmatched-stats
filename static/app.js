@@ -586,7 +586,7 @@ ${index + 1}. ${map.map}
     const option = event.target.closest("button[data-open-report]");
     if (!option) return;
     const targetId = option.dataset.openReport;
-    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection").forEach(section => {
+    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection").forEach(section => {
       section.hidden = section.id !== targetId;
     });
     menu.hidden = true;
@@ -595,6 +595,7 @@ ${index + 1}. ${map.map}
     if (targetId === "heroReportSection") document.getElementById("heroSearchInput")?.focus({ preventScroll: true });
     if (targetId === "playerReportSection") document.getElementById("playerSearchInput")?.focus({ preventScroll: true });
     if (targetId === "heroHeadToHeadSection") document.getElementById("headToHeadHero1")?.focus({ preventScroll: true });
+    if (targetId === "playerHeadToHeadSection") document.getElementById("headToHeadPlayer1")?.focus({ preventScroll: true });
   });
 
   document.querySelectorAll("[data-close-report]").forEach(button => {
@@ -677,7 +678,7 @@ loadDashboard();
       const report = await response.json();
       if (!response.ok) throw new Error(report.error || "Ошибка загрузки отчёта");
       const stats = report.stats;
-      const group = (title, count, list, icon) => `<section class="hero-match-group"><h3>${icon} ${title}<span>${count}</span></h3>${list.length ? list.map(renderMatch).join("") : '<p class="hero-empty">Матчей в этой группе пока нет.</p>'}</section>`;
+      const group = (title, count, list, icon) => `<section class="hero-match-group"><h3>${icon} ${title}<span>${count}</span></h3>${list.length ? `<div class="hero-match-scroll">${list.map(renderMatch).join("")}</div>` : '<p class="hero-empty">Матчей в этой группе пока нет.</p>'}</section>`;
       results.innerHTML = `
         <h3>Статистика: ${escapeHtml(report.hero)}</h3>
         <div class="hero-report-stats">
@@ -690,6 +691,18 @@ loadDashboard();
         ${group("Поражения героя", stats.losses, report.losses, "❌")}
         ${stats.unresolved ? group("Не удалось определить результат", stats.unresolved, report.unresolved, "❔") : ""}
       `;
+      // В карточке героя показываем 5 матчей, остальные доступны прокруткой.
+      results.querySelectorAll(".hero-match-scroll").forEach(container => {
+        const rows = container.querySelectorAll(".hero-match-row");
+        if (rows.length > 5) {
+          const first = rows[0].getBoundingClientRect().top;
+          const fifth = rows[4].getBoundingClientRect().bottom;
+          container.style.maxHeight = `${Math.ceil(fifth - first + 2)}px`;
+          container.style.overflowY = "auto";
+          container.style.overscrollBehavior = "contain";
+          container.style.paddingRight = "4px";
+        }
+      });
     } catch (error) {
       results.innerHTML = '<p class="hero-empty">Не удалось загрузить отчёт. Проверьте соединение и попробуйте ещё раз.</p>';
     }
@@ -773,13 +786,13 @@ loadDashboard();
         ${group("Проигрыши", stats.losses, report.losses, "❌")}
         ${stats.unresolved ? group("Не удалось определить результат", stats.unresolved, report.unresolved, "❔") : ""}
       `;
-      // Ограничиваем каждый список высотой первых 10 карточек.
+      // Ограничиваем каждый список высотой первых 5 карточек.
       results.querySelectorAll(".player-match-scroll").forEach(container => {
         const rows = container.querySelectorAll(".hero-match-row");
-        if (rows.length > 10) {
+        if (rows.length > 5) {
           const first = rows[0].getBoundingClientRect().top;
-          const tenth = rows[9].getBoundingClientRect().bottom;
-          container.style.maxHeight = `${Math.ceil(tenth - first + 2)}px`;
+          const fifth = rows[4].getBoundingClientRect().bottom;
+          container.style.maxHeight = `${Math.ceil(fifth - first + 2)}px`;
           container.style.overflowY = "auto";
           container.style.overscrollBehavior = "contain";
           container.style.paddingRight = "4px";
@@ -871,6 +884,93 @@ loadDashboard();
         </div>
         <section class="hero-match-group"><h3>Все матчи между героями <span>${report.matches.length}</span></h3>
           ${report.matches.length ? report.matches.map(renderMatch).join("") : '<p class="hero-empty">В таблице Matches пока нет матчей между этими героями.</p>'}
+        </section>`;
+    } catch (error) {
+      results.innerHTML = `<p class="hero-empty">${escapeHtml(error.message || "Не удалось загрузить отчёт. Попробуйте ещё раз.")}</p>`;
+    }
+  }
+})();
+
+
+// =========================
+// Противостояние двух игроков
+// =========================
+(function initPlayerHeadToHeadReport() {
+  const input1 = document.getElementById("headToHeadPlayer1");
+  const input2 = document.getElementById("headToHeadPlayer2");
+  const suggestions1 = document.getElementById("headToHeadPlayer1Suggestions");
+  const suggestions2 = document.getElementById("headToHeadPlayer2Suggestions");
+  const results = document.getElementById("playerHeadToHeadResults");
+  if (!input1 || !input2 || !suggestions1 || !suggestions2 || !results) return;
+
+  const escapeHtml = value => String(value ?? "").replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[ch]));
+  const state = { player1: "", player2: "" };
+  const requestIds = { player1: 0, player2: 0 };
+
+  function setupSearch(input, suggestions, key) {
+    input.addEventListener("input", async () => {
+      state[key] = "";
+      const query = input.value.trim();
+      const requestId = ++requestIds[key];
+      if (query.length < 2) { suggestions.hidden = true; suggestions.innerHTML = ""; return; }
+      try {
+        const response = await fetch(`/api/player_search?q=${encodeURIComponent(query)}`);
+        if (!response.ok) throw new Error("Не удалось найти игроков");
+        const players = await response.json();
+        if (requestId !== requestIds[key]) return;
+        suggestions.innerHTML = players.length
+          ? players.map(player => `<button type="button" class="hero-suggestion" data-selected-player="${escapeHtml(player)}">${escapeHtml(player)}</button>`).join("")
+          : '<div class="hero-suggestion">Ничего не найдено</div>';
+        suggestions.hidden = false;
+      } catch (_) {
+        suggestions.hidden = true;
+        results.innerHTML = '<p class="hero-empty">Не удалось выполнить поиск игроков. Попробуйте ещё раз.</p>';
+      }
+    });
+    suggestions.addEventListener("click", event => {
+      const button = event.target.closest("button[data-selected-player]");
+      if (!button) return;
+      state[key] = button.dataset.selectedPlayer;
+      input.value = state[key];
+      suggestions.hidden = true;
+      if (state.player1 && state.player2) loadReport();
+    });
+  }
+
+  setupSearch(input1, suggestions1, "player1");
+  setupSearch(input2, suggestions2, "player2");
+  document.addEventListener("click", event => {
+    if (!event.target.closest("#headToHeadPlayer1") && !event.target.closest("#headToHeadPlayer1Suggestions")) suggestions1.hidden = true;
+    if (!event.target.closest("#headToHeadPlayer2") && !event.target.closest("#headToHeadPlayer2Suggestions")) suggestions2.hidden = true;
+  });
+
+  function renderMatch(match, result) {
+    const resultText = result === "unresolved" ? "Результат не определён" : `${escapeHtml(result === "win" ? state.player1 : state.player2)} победил`;
+    return `<article class="hero-match-row">
+      <div class="hero-match-top"><strong>${escapeHtml(match.date || "Дата не указана")}</strong><span>${escapeHtml(match.map || "Поле не указано")}</span></div>
+      <div class="hero-match-vs"><strong>${escapeHtml(match.player1 || "?")}</strong> — ⚔️ ${escapeHtml(match.hero1 || "?")}<br>VS<br><strong>${escapeHtml(match.player2 || "?")}</strong> — ⚔️ ${escapeHtml(match.hero2 || "?")}</div>
+      <div class="hero-match-meta">Победитель: ${escapeHtml(match.winner || "не указан")} · ${resultText}</div>
+    </article>`;
+  }
+
+  async function loadReport() {
+    if (state.player1.toLowerCase() === state.player2.toLowerCase()) {
+      results.innerHTML = '<p class="hero-empty">Выберите двух разных игроков.</p>'; return;
+    }
+    results.innerHTML = '<p>Загружаем игры…</p>';
+    try {
+      const response = await fetch(`/api/player_head_to_head?player1=${encodeURIComponent(state.player1)}&player2=${encodeURIComponent(state.player2)}`);
+      const report = await response.json();
+      if (!response.ok) throw new Error(report.error || "Ошибка загрузки отчёта");
+      const statCard = (player, stats) => `<div class="hero-report-stat"><span>${escapeHtml(player)} · Win Rate</span><strong>${String(stats.winrate).replace(".", ",")}%</strong><small>${stats.wins} побед · ${stats.losses} поражений</small></div>`;
+      results.innerHTML = `
+        <div class="hero-report-stats">
+          <div class="hero-report-stat"><span>Количество игр</span><strong>${report.matches.length}</strong></div>
+          ${statCard(report.player1, report.stats1)}
+          ${statCard(report.player2, report.stats2)}
+        </div>
+        <section class="hero-match-group"><h3>Все матчи между игроками <span>${report.matches.length}</span></h3>
+          ${report.matches.length ? report.matches.map(match => renderMatch(match, match.result_for_player1)).join("") : '<p class="hero-empty">В таблице Matches пока нет матчей между этими игроками.</p>'}
         </section>`;
     } catch (error) {
       results.innerHTML = `<p class="hero-empty">${escapeHtml(error.message || "Не удалось загрузить отчёт. Попробуйте ещё раз.")}</p>`;

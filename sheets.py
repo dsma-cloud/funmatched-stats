@@ -559,3 +559,62 @@ def hero_head_to_head_report(hero1_name, hero2_name):
     stats1 = {"games": total, "wins": wins1, "losses": wins2, "unresolved": unresolved, "winrate": round(wins1 / decided * 100, 1) if decided else 0}
     stats2 = {"games": total, "wins": wins2, "losses": wins1, "unresolved": unresolved, "winrate": round(wins2 / decided * 100, 1) if decided else 0}
     return {"hero1": hero1_name, "hero2": hero2_name, "stats1": stats1, "stats2": stats2, "matches": matches}
+
+
+# =========================
+# Противостояние двух игроков
+# =========================
+def player_head_to_head_report(player1_name, player2_name):
+    """Все матчи, в которых два выбранных игрока выступали друг против друга."""
+    player1_name = (player1_name or "").strip()
+    player2_name = (player2_name or "").strip()
+    empty_stats = {"games": 0, "wins": 0, "losses": 0, "unresolved": 0, "winrate": 0}
+    if not player1_name or not player2_name or player1_name.casefold() == player2_name.casefold():
+        return {"player1": player1_name, "player2": player2_name, "stats1": empty_stats.copy(), "stats2": empty_stats.copy(), "matches": []}
+
+    rows = get_sheet("Matches").get_all_values()
+    matches = []
+    wins1 = wins2 = unresolved = 0
+    target1, target2 = player1_name.casefold(), player2_name.casefold()
+
+    # Matches columns: ID, Date, Player1, Hero1, Player2, Hero2, Map, Winner, Duration, Notes
+    for row in rows[1:]:
+        row = row + [""] * max(0, 10 - len(row))
+        match_id, date, player1, hero1, player2, hero2, map_name, winner = row[:8]
+        side1_player, side2_player = player1.strip().casefold(), player2.strip().casefold()
+        if not ((side1_player == target1 and side2_player == target2) or
+                (side1_player == target2 and side2_player == target1)):
+            continue
+
+        winner_text = winner.strip().casefold()
+        player1_text, player2_text = player1.strip().casefold(), player2.strip().casefold()
+        won_side = 0
+        if winner_text in {"player 1", "player1", "1", player1_text} and winner_text:
+            won_side = 1
+        elif winner_text in {"player 2", "player2", "2", player2_text} and winner_text:
+            won_side = 2
+
+        if not won_side:
+            result_for_player1 = "unresolved"
+            unresolved += 1
+        else:
+            winning_player = player1 if won_side == 1 else player2
+            if winning_player.strip().casefold() == target1:
+                result_for_player1 = "win"
+                wins1 += 1
+            else:
+                result_for_player1 = "loss"
+                wins2 += 1
+
+        matches.append({
+            "id": match_id, "date": date, "player1": player1, "hero1": hero1,
+            "player2": player2, "hero2": hero2, "map": map_name, "winner": winner,
+            "result_for_player1": result_for_player1,
+            "result_for_player2": ("unresolved" if result_for_player1 == "unresolved" else "loss" if result_for_player1 == "win" else "win")
+        })
+
+    total = len(matches)
+    decided = wins1 + wins2
+    stats1 = {"games": total, "wins": wins1, "losses": wins2, "unresolved": unresolved, "winrate": round(wins1 / decided * 100, 1) if decided else 0}
+    stats2 = {"games": total, "wins": wins2, "losses": wins1, "unresolved": unresolved, "winrate": round(wins2 / decided * 100, 1) if decided else 0}
+    return {"player1": player1_name, "player2": player2_name, "stats1": stats1, "stats2": stats2, "matches": matches}

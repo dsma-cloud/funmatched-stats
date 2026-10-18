@@ -13,7 +13,8 @@ from sheets import (
     search_maps,
     hero_match_report,
     player_match_report,
-    hero_head_to_head_report
+    hero_head_to_head_report,
+    player_head_to_head_report
 )
 
 
@@ -262,3 +263,27 @@ def create_match():
     except Exception:
         app.logger.exception("Не удалось добавить матч в Google Sheets")
         return jsonify({"error": "Не удалось сохранить матч в Google Sheets. Попробуйте позже."}), 500
+
+
+# =========================
+# Противостояние двух игроков
+# =========================
+@app.route("/api/player_head_to_head")
+def player_head_to_head():
+    player1 = request.args.get("player1", "").strip()
+    player2 = request.args.get("player2", "").strip()
+    if not player1 or not player2:
+        return jsonify({"error": "Выберите обоих игроков."}), 400
+    if player1.casefold() == player2.casefold():
+        return jsonify({"error": "Выберите двух разных игроков."}), 400
+    try:
+        known_players = search_players(player1)
+        if not any(str(item).strip().casefold() == player1.casefold() for item in known_players):
+            return jsonify({"error": f"Игрок «{player1}» не найден в таблице Players."}), 400
+        known_players = search_players(player2)
+        if not any(str(item).strip().casefold() == player2.casefold() for item in known_players):
+            return jsonify({"error": f"Игрок «{player2}» не найден в таблице Players."}), 400
+        return jsonify(player_head_to_head_report(player1, player2))
+    except Exception:
+        app.logger.exception("Ошибка формирования отчёта противостояния игроков")
+        return jsonify({"error": "Не удалось загрузить отчёт. Попробуйте позже."}), 500
