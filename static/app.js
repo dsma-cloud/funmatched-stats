@@ -586,7 +586,7 @@ ${index + 1}. ${map.map}
     const option = event.target.closest("button[data-open-report]");
     if (!option) return;
     const targetId = option.dataset.openReport;
-    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection, #playerRating7DaysSection").forEach(section => {
+    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection, #playerRating7DaysSection, #heroDevelopmentSection").forEach(section => {
       section.hidden = section.id !== targetId;
     });
     menu.hidden = true;
@@ -1026,3 +1026,39 @@ async function loadPlayerRating7Days() {
     results.innerHTML = `<p class="hero-empty">${String(error.message || "Ошибка загрузки рейтинга.")}</p>`;
   }
 }
+
+
+async function loadHeroDevelopment() {
+  const start = document.getElementById("heroDevelopmentStart")?.value;
+  const end = document.getElementById("heroDevelopmentEnd")?.value;
+  const results = document.getElementById("heroDevelopmentResults");
+  if (!results) return;
+  if (!start || !end) { results.innerHTML = '<p class="hero-empty">Укажите обе даты периода.</p>'; return; }
+  if (end < start) { results.innerHTML = '<p class="hero-empty">Дата окончания должна быть не раньше даты начала.</p>'; return; }
+  results.innerHTML = '<p>Загружаем данные матчей…</p>';
+  try {
+    const response = await fetch(`/api/hero_development?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Не удалось загрузить отчёт.");
+    const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[char]));
+    const fmtDate = value => { const parts = value.split("-"); return `${parts[2]}.${parts[1]}.${parts[0]}`; };
+    if (!data.heroes?.length) {
+      results.innerHTML = `<p class="hero-empty">За период ${fmtDate(data.from)} — ${fmtDate(data.to)} не найдено героев, перешедших в другую группу рейтинга. Для сравнения нужны матчи с определённым победителем до начала периода и к его окончанию.</p>`;
+      return;
+    }
+    results.innerHTML = `<p class="report-description">Период: ${fmtDate(data.from)} — ${fmtDate(data.to)}. Сравнивается общий винрейт до начала периода и после его окончания.</p><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:580px"><thead><tr><th style="text-align:left;padding:10px 8px">Герой</th><th style="text-align:left;padding:10px 8px">Переход</th><th style="padding:10px 8px">Винрейт до</th><th style="padding:10px 8px">Винрейт после</th><th style="padding:10px 8px">Изменение</th><th style="padding:10px 8px">Игры за период</th></tr></thead><tbody>${data.heroes.map(hero => `<tr style="border-top:1px solid #8883"><td style="padding:10px 8px">${escapeHtml(hero.hero)}</td><td style="padding:10px 8px">${escapeHtml(hero.from_group)} → ${escapeHtml(hero.to_group)}</td><td style="text-align:center;padding:10px 8px">${hero.before_winrate}%</td><td style="text-align:center;padding:10px 8px">${hero.after_winrate}%</td><td style="text-align:center;padding:10px 8px">${hero.change > 0 ? "+" : ""}${hero.change} п.п.</td><td style="text-align:center;padding:10px 8px">${hero.period_games} (${hero.period_wins} побед / ${hero.period_losses} поражений)</td></tr>`).join("")}</tbody></table></div>`;
+  } catch (error) { results.innerHTML = `<p class="hero-empty">${String(error.message || "Ошибка загрузки отчёта.")}</p>`; }
+}
+
+(function initHeroDevelopment() {
+  const today = new Date();
+  const end = document.getElementById("heroDevelopmentEnd");
+  const start = document.getElementById("heroDevelopmentStart");
+  const run = document.getElementById("heroDevelopmentRun");
+  const toIso = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+  if (end && start) {
+    end.value = toIso(today);
+    const first = new Date(today); first.setDate(first.getDate() - 6); start.value = toIso(first);
+  }
+  run?.addEventListener("click", loadHeroDevelopment);
+})();

@@ -15,7 +15,8 @@ from sheets import (
     player_match_report,
     hero_head_to_head_report,
     player_head_to_head_report,
-    player_rating_last_7_days
+    player_rating_last_7_days,
+    hero_development_report
 )
 
 
@@ -297,3 +298,18 @@ def player_rating_last_7_days_api():
     except Exception:
         app.logger.exception("Ошибка формирования рейтинга игроков за 7 дней")
         return jsonify({"error": "Не удалось загрузить рейтинг игроков."}), 500
+
+
+@app.route("/api/hero_development")
+def hero_development_api():
+    try:
+        start_value = (request.args.get("start_date") or "").strip()
+        end_value = (request.args.get("end_date") or "").strip()
+        if not start_value or not end_value:
+            return jsonify({"error": "Укажите начало и конец периода."}), 400
+        return jsonify(hero_development_report(start_value, end_value))
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception:
+        app.logger.exception("Ошибка формирования отчёта развития героя")
+        return jsonify({"error": "Не удалось загрузить отчёт развития героя."}), 500

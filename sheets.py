@@ -679,3 +679,91 @@ def player_rating_last_7_days():
         item["winrate"] = round(item["wins"] / decided * 100, 1) if decided else 0
     result.sort(key=lambda item: (item["wins"], item["winrate"], item["games"], item["player"].casefold()), reverse=True)
     return {"from": first_day.isoformat(), "to": today.isoformat(), "players": result}
+
+
+# =========================
+# Развитие героя: переход между группами рейтинга за выбранный период
+# =========================
+def hero_development_report(start_value, end_value):
+    """Сравнивает all-time win rate до начала периода и после его окончания."""
+    start_day = datetime.strptime(start_value, "%Y-%m-%d").date()
+    end_day = datetime.strptime(end_value, "%Y-%m-%d").date()
+    if end_day < start_day:
+        raise ValueError("Дата окончания периода должна быть не раньше даты начала.")
+
+    rows = get_sheet("Matches").get_all_values()
+    stats = {}
+
+    def parse_match_date(value):
+        value = (value or "").strip()
+        if not value:
+            return None
+        for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d"):
+            try:
+                return datetime.strptime(value[:10], fmt).date()
+            except ValueError:
+                pass
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+        except ValueError:
+            return None
+
+    def ensure(hero):
+        if hero and hero not in stats:
+            stats[hero] = {
+                "hero": hero, "before_wins": 0, "before_losses": 0,
+                "after_wins": 0, "after_losses": 0, "period_games": 0,
+                "period_wins": 0, "period_losses": 0
+            }
+        return stats.get(hero)
+
+    for row in rows[1:]:
+        row = row + [""] * max(0, 8 - len(row))
+        _, match_date, player1, hero1, player2, hero2, _, winner = row[:8]
+        match_day = parse_match_date(match_date)
+        if match_day is None or match_day > end_day:
+            continue
+        hero1, hero2 = hero1.strip(), hero2.strip()
+        winner_text = winner.strip().casefold()
+        p1_won = winner_text in {"player 1", "player1", "1", player1.strip().casefold()}
+        p2_won = winner_text in {"player 2", "player2", "2", player2.strip().casefold()}
+        if p1_won == p2_won:
+            continue  # матч без однозначного победителя не влияет на win rate
+        for hero, won in ((hero1, p1_won), (hero2, p2_won)):
+            item = ensure(hero)
+            if not item:
+                continue
+            if match_day < start_day:
+                item["before_wins" if won else "before_losses"] += 1
+                item["after_wins" if won else "after_losses"] += 1
+            else:
+                item["after_wins" if won else "after_losses"] += 1
+                item["period_games"] += 1
+                item["period_wins" if won else "period_losses"] += 1
+
+    def group(rate):
+        if rate >= 75: return "Мета"
+        if rate >= 60: return "Сильные"
+        if rate >= 45: return "Стабильные"
+        return "Остальные"
+
+    result = []
+    for item in stats.values():
+        before_decided = item["before_wins"] + item["before_losses"]
+        after_decided = item["after_wins"] + item["after_losses"]
+        if not item["period_games"] or not before_decided or not after_decided:
+            continue
+        before_rate = round(item["before_wins"] / before_decided * 100, 1)
+        after_rate = round(item["after_wins"] / after_decided * 100, 1)
+        before_group, after_group = group(before_rate), group(after_rate)
+        if before_group == after_group:
+            continue
+        result.append({
+            "hero": item["hero"], "from_group": before_group, "to_group": after_group,
+            "before_winrate": before_rate, "after_winrate": after_rate,
+            "change": round(after_rate - before_rate, 1),
+            "period_games": item["period_games"], "period_wins": item["period_wins"],
+            "period_losses": item["period_losses"]
+        })
+    result.sort(key=lambda item: (abs(item["change"]), item["period_games"]), reverse=True)
+    return {"from": start_day.isoformat(), "to": end_day.isoformat(), "heroes": result}

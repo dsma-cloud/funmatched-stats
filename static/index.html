@@ -91,6 +91,7 @@ Funmatched Stats
     <button type="button" data-open-report="heroHeadToHeadSection">⚔️ Противостояние двух героев</button>
      <button type="button" data-open-report="playerHeadToHeadSection">🏆 Противостояние двух игроков</button>
     <button type="button" data-open-report="playerRating7DaysSection">📈 Рейтинг игроков за 7 дней</button>
+    <button type="button" data-open-report="heroDevelopmentSection">📊 Развитие героя</button>
   </div>
 </div>
 
@@ -253,6 +254,19 @@ Funmatched Stats
   <h2>📈 Рейтинг игроков за последние 7 дней</h2>
   <p class="report-description" id="playerRating7DaysPeriod">Рейтинг обновляется по данным матчей за последние 7 календарных дней, включая сегодня.</p>
   <div id="playerRating7DaysResults" aria-live="polite"><p>Загрузка рейтинга…</p></div>
+</section>
+
+
+<section class="card hero-report" id="heroDevelopmentSection" hidden>
+  <button type="button" class="report-close" data-close-report="heroDevelopmentSection" aria-label="Закрыть отчёт">✕</button>
+  <h2>📊 Развитие героя</h2>
+  <p class="report-description">Выберите период. Отчёт покажет героев, чей общий винрейт перешёл в другую группу рейтинга после матчей за этот период.</p>
+  <div class="add-match-grid" style="margin:14px 0">
+    <label>Начало периода <input type="date" id="heroDevelopmentStart" required></label>
+    <label>Конец периода <input type="date" id="heroDevelopmentEnd" required></label>
+  </div>
+  <button type="button" id="heroDevelopmentRun">Показать изменения</button>
+  <div id="heroDevelopmentResults" aria-live="polite"><p>Выберите период и нажмите «Показать изменения».</p></div>
 </section>
 
 <style>
