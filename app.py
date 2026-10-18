@@ -7,6 +7,7 @@ from sheets import (
     dashboard_maps,
     dashboard_last_match,
     dashboard_stats,
+    add_match,
     search_heroes,
     hero_match_report
 )
@@ -134,3 +135,32 @@ def hero_report():
     if not hero:
         return jsonify({"error": "Укажите героя"}), 400
     return jsonify(hero_match_report(hero))
+
+
+# =========================
+# Добавление матча из Mini App
+# =========================
+@app.route("/api/matches", methods=["POST"])
+def create_match():
+    data = request.get_json(silent=True) or {}
+    required = ("player1", "hero1", "player2", "hero2", "map", "winner")
+    match = {key: str(data.get(key, "")).strip() for key in required}
+
+    missing = [key for key, value in match.items() if not value]
+    if missing:
+        return jsonify({"error": "Заполните все поля матча."}), 400
+
+    if match["winner"] not in ("Player 1", "Player 2"):
+        return jsonify({"error": "Выберите победителя: Player 1 или Player 2."}), 400
+
+    match["date"] = str(data.get("date", "")).strip()
+    if not match["date"]:
+        from datetime import date
+        match["date"] = date.today().isoformat()
+
+    try:
+        add_match(match)
+        return jsonify({"ok": True, "message": "Матч добавлен в таблицу Matches."}), 201
+    except Exception:
+        app.logger.exception("Не удалось добавить матч в Google Sheets")
+        return jsonify({"error": "Не удалось сохранить матч в Google Sheets. Попробуйте позже."}), 500

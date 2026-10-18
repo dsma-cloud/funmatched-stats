@@ -465,17 +465,76 @@ ${index + 1}. ${map.map}
 // =========================
 
 
-document.getElementById(
-    "addMatch"
-).onclick = function(){
+// =========================
+// Добавление матча в Google Sheets
+// =========================
+(function initAddMatchForm() {
+  const openButton = document.getElementById("addMatch");
+  const modal = document.getElementById("addMatchModal");
+  const form = document.getElementById("addMatchForm");
+  const message = document.getElementById("addMatchMessage");
+  const saveButton = document.getElementById("saveAddMatch");
+  const dateInput = document.getElementById("matchDate");
+  if (!openButton || !modal || !form) return;
 
+  const closeModal = () => {
+    modal.hidden = true;
+    message.textContent = "";
+    message.className = "add-match-message";
+  };
 
-    alert(
-        "Открываем добавление матча"
-    );
+  openButton.addEventListener("click", () => {
+    form.reset();
+    const today = new Date();
+    dateInput.value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+    message.textContent = "";
+    message.className = "add-match-message";
+    modal.hidden = false;
+    const firstInput = form.querySelector('input[name="player1"]');
+    if (firstInput) firstInput.focus();
+  });
 
+  document.getElementById("closeAddMatch").addEventListener("click", closeModal);
+  document.getElementById("cancelAddMatch").addEventListener("click", closeModal);
+  modal.querySelectorAll("[data-close-add-match]").forEach(el => el.addEventListener("click", closeModal));
 
-};
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    const data = Object.fromEntries(new FormData(form).entries());
+    saveButton.disabled = true;
+    saveButton.textContent = "Сохраняем…";
+    message.textContent = "Отправляем матч в Google Sheets…";
+    message.className = "add-match-message";
+    try {
+      const response = await fetch("/api/matches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(result.error || "Не удалось сохранить матч.");
+      message.textContent = "✅ Матч сохранён в таблице Matches.";
+      message.className = "add-match-message success";
+      form.reset();
+      setTimeout(() => {
+        closeModal();
+        loadDashboard().catch(error => console.error("Не удалось обновить статистику:", error));
+        const reportResults = document.getElementById("heroReportResults");
+        const reportHero = document.getElementById("heroSearchInput")?.value.trim();
+        if (reportHero && reportResults && typeof window.refreshHeroReport === "function") {
+          window.refreshHeroReport(reportHero);
+        }
+      }, 900);
+    } catch (error) {
+      message.textContent = `❌ ${error.message || "Ошибка сохранения."}`;
+      message.className = "add-match-message error";
+    } finally {
+      saveButton.disabled = false;
+      saveButton.textContent = "💾 Сохранить матч";
+    }
+  });
+})();
 
 
 
@@ -573,4 +632,5 @@ loadDashboard();
       results.innerHTML = '<p class="hero-empty">Не удалось загрузить отчёт. Проверьте соединение и попробуйте ещё раз.</p>';
     }
   }
+  window.refreshHeroReport = loadHeroReport;
 })();
