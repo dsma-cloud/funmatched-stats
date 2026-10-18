@@ -88,6 +88,7 @@ Funmatched Stats
   <div id="reportsMenu" class="reports-menu" hidden>
     <button type="button" data-open-report="heroReportSection">⚔️ Карточка героя</button>
     <button type="button" data-open-report="playerReportSection">🏆 Карточка игрока</button>
+    <button type="button" data-open-report="heroHeadToHeadSection">⚔️ Противостояние двух героев</button>
   </div>
 </div>
 
@@ -205,8 +206,28 @@ Funmatched Stats
   <div id="playerReportResults" aria-live="polite"><p>Введите не менее двух символов для поиска.</p></div>
 </section>
 
+
+<section class="card hero-report" id="heroHeadToHeadSection" hidden>
+  <button type="button" class="report-close" data-close-report="heroHeadToHeadSection" aria-label="Закрыть отчёт">✕</button>
+  <h2>⚔️ Противостояние двух героев</h2>
+  <p class="report-description">Выберите двух героев, чтобы сравнить их результаты в очных встречах и посмотреть все матчи между ними.</p>
+  <div class="add-match-grid head-to-head-search-grid">
+    <div class="hero-search-wrap head-to-head-search-wrap">
+      <label for="headToHeadHero1">Герой 1</label>
+      <input id="headToHeadHero1" type="search" placeholder="Поиск первого героя…" autocomplete="off" aria-label="Поиск первого героя">
+      <div id="headToHeadHero1Suggestions" class="hero-suggestions" hidden></div>
+    </div>
+    <div class="hero-search-wrap head-to-head-search-wrap">
+      <label for="headToHeadHero2">Герой 2</label>
+      <input id="headToHeadHero2" type="search" placeholder="Поиск второго героя…" autocomplete="off" aria-label="Поиск второго героя">
+      <div id="headToHeadHero2Suggestions" class="hero-suggestions" hidden></div>
+    </div>
+  </div>
+  <div id="heroHeadToHeadResults" aria-live="polite"><p>Выберите двух разных героев.</p></div>
+</section>
+
 <style>
-.reports-menu-wrap{position:relative;display:inline-block;margin-top:8px}.reports-menu{position:absolute;z-index:100;top:calc(100% + 5px);right:0;min-width:210px;padding:6px;border:1px solid #8884;border-radius:10px;background:var(--background-content,#fff);box-shadow:0 8px 24px #0002}.reports-menu button{display:block;width:100%;padding:11px 12px;text-align:left;border:0;border-radius:7px;background:transparent;color:inherit;font:inherit;cursor:pointer}.reports-menu button:hover{background:#8882}.report-close{float:right;border:0;background:transparent;color:inherit;font-size:18px;cursor:pointer;padding:4px 8px}.hero-report[hidden],.reports-menu[hidden]{display:none}.hero-report{margin:20px 0}.report-description{opacity:.78;margin-top:-4px}.hero-search-wrap{position:relative;max-width:520px;margin:14px 0 20px}.hero-search-wrap input{box-sizing:border-box;width:100%;padding:13px 14px;border:1px solid var(--border-color,#ccc);border-radius:10px;font:inherit;background:var(--input-background,#fff);color:inherit}.hero-suggestions{position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:260px;overflow:auto;border:1px solid #ccc;border-radius:10px;background:var(--background-content,#fff);box-shadow:0 8px 24px #0002}.hero-suggestion{display:block;width:100%;text-align:left;padding:11px 14px;border:0;border-bottom:1px solid #0001;background:transparent;color:inherit;font:inherit;cursor:pointer}.hero-suggestion:hover{background:#8882}.hero-report-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}.hero-report-stat{padding:14px;border-radius:12px;background:var(--field-background,#8881)}.hero-report-stat span{display:block;font-size:.88em;opacity:.75}.hero-report-stat strong{display:block;font-size:1.55em;margin-top:5px}.hero-match-group{margin:18px 0}.hero-match-group h3{display:flex;justify-content:space-between;gap:8px;align-items:center}.hero-match-row{padding:12px 14px;border:1px solid #8883;border-radius:10px;margin:9px 0}.hero-match-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}.hero-match-vs{margin:4px 0}.hero-match-meta{font-size:.9em;opacity:.75}.hero-empty{opacity:.75;padding:12px 0}.player-report{scroll-margin-top:16px}.hero-report-stats .hero-report-stat.wide{grid-column:span 2}@media(max-width:600px){.hero-report-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-report{padding:14px}.hero-match-row{padding:10px}}
+.reports-menu-wrap{position:relative;display:inline-block;margin-top:8px}.reports-menu{position:absolute;z-index:100;top:calc(100% + 5px);right:0;min-width:210px;padding:6px;border:1px solid #8884;border-radius:10px;background:var(--background-content,#fff);box-shadow:0 8px 24px #0002}.reports-menu button{display:block;width:100%;padding:11px 12px;text-align:left;border:0;border-radius:7px;background:transparent;color:inherit;font:inherit;cursor:pointer}.reports-menu button:hover{background:#8882}.report-close{float:right;border:0;background:transparent;color:inherit;font-size:18px;cursor:pointer;padding:4px 8px}.hero-report[hidden],.reports-menu[hidden]{display:none}.hero-report{margin:20px 0}.report-description{opacity:.78;margin-top:-4px}.hero-search-wrap{position:relative;max-width:520px;margin:14px 0 20px}.hero-search-wrap input{box-sizing:border-box;width:100%;padding:13px 14px;border:1px solid var(--border-color,#ccc);border-radius:10px;font:inherit;background:var(--input-background,#fff);color:inherit}.hero-suggestions{position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:260px;overflow:auto;border:1px solid #ccc;border-radius:10px;background:var(--background-content,#fff);box-shadow:0 8px 24px #0002}.hero-suggestion{display:block;width:100%;text-align:left;padding:11px 14px;border:0;border-bottom:1px solid #0001;background:transparent;color:inherit;font:inherit;cursor:pointer}.hero-suggestion:hover{background:#8882}.hero-report-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}.hero-report-stat{padding:14px;border-radius:12px;background:var(--field-background,#8881)}.hero-report-stat span{display:block;font-size:.88em;opacity:.75}.hero-report-stat strong{display:block;font-size:1.55em;margin-top:5px}.hero-match-group{margin:18px 0}.hero-match-group h3{display:flex;justify-content:space-between;gap:8px;align-items:center}.hero-match-row{padding:12px 14px;border:1px solid #8883;border-radius:10px;margin:9px 0}.hero-match-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}.hero-match-vs{margin:4px 0}.hero-match-meta{font-size:.9em;opacity:.75}.hero-empty{opacity:.75;padding:12px 0}.player-report{scroll-margin-top:16px}.head-to-head-search-grid{margin-top:14px}.head-to-head-search-wrap{max-width:none;margin:0}.head-to-head-search-wrap label{display:block;margin-bottom:6px;font-weight:600}.hero-report-stats .hero-report-stat.wide{grid-column:span 2}@media(max-width:600px){.hero-report-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-report{padding:14px}.hero-match-row{padding:10px}}
 </style>
 
 <!-- =========================

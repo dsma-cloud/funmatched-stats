@@ -586,7 +586,7 @@ ${index + 1}. ${map.map}
     const option = event.target.closest("button[data-open-report]");
     if (!option) return;
     const targetId = option.dataset.openReport;
-    document.querySelectorAll("#heroReportSection, #playerReportSection").forEach(section => {
+    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection").forEach(section => {
       section.hidden = section.id !== targetId;
     });
     menu.hidden = true;
@@ -594,6 +594,7 @@ ${index + 1}. ${map.map}
     document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
     if (targetId === "heroReportSection") document.getElementById("heroSearchInput")?.focus({ preventScroll: true });
     if (targetId === "playerReportSection") document.getElementById("playerSearchInput")?.focus({ preventScroll: true });
+    if (targetId === "heroHeadToHeadSection") document.getElementById("headToHeadHero1")?.focus({ preventScroll: true });
   });
 
   document.querySelectorAll("[data-close-report]").forEach(button => {
@@ -774,6 +775,93 @@ loadDashboard();
       `;
     } catch (error) {
       results.innerHTML = '<p class="hero-empty">Не удалось загрузить карточку игрока. Проверьте соединение и попробуйте ещё раз.</p>';
+    }
+  }
+})();
+
+
+// =========================
+// Противостояние двух героев
+// =========================
+(function initHeroHeadToHeadReport() {
+  const input1 = document.getElementById("headToHeadHero1");
+  const input2 = document.getElementById("headToHeadHero2");
+  const suggestions1 = document.getElementById("headToHeadHero1Suggestions");
+  const suggestions2 = document.getElementById("headToHeadHero2Suggestions");
+  const results = document.getElementById("heroHeadToHeadResults");
+  if (!input1 || !input2 || !suggestions1 || !suggestions2 || !results) return;
+
+  const escapeHtml = value => String(value ?? "").replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[ch]));
+  const state = { hero1: "", hero2: "" };
+  const requestIds = { hero1: 0, hero2: 0 };
+
+  function setupSearch(input, suggestions, key) {
+    input.addEventListener("input", async () => {
+      state[key] = "";
+      const query = input.value.trim();
+      const requestId = ++requestIds[key];
+      if (query.length < 2) { suggestions.hidden = true; suggestions.innerHTML = ""; return; }
+      try {
+        const response = await fetch(`/api/hero_search?q=${encodeURIComponent(query)}`);
+        if (!response.ok) throw new Error("Не удалось найти героев");
+        const heroes = await response.json();
+        if (requestId !== requestIds[key]) return;
+        suggestions.innerHTML = heroes.length
+          ? heroes.map(hero => `<button type="button" class="hero-suggestion" data-selected-hero="${escapeHtml(hero)}">${escapeHtml(hero)}</button>`).join("")
+          : '<div class="hero-suggestion">Ничего не найдено</div>';
+        suggestions.hidden = false;
+      } catch (_) {
+        suggestions.hidden = true;
+        results.innerHTML = '<p class="hero-empty">Не удалось выполнить поиск героев. Попробуйте ещё раз.</p>';
+      }
+    });
+    suggestions.addEventListener("click", event => {
+      const button = event.target.closest("button[data-selected-hero]");
+      if (!button) return;
+      state[key] = button.dataset.selectedHero;
+      input.value = state[key];
+      suggestions.hidden = true;
+      if (state.hero1 && state.hero2) loadReport();
+    });
+  }
+
+  setupSearch(input1, suggestions1, "hero1");
+  setupSearch(input2, suggestions2, "hero2");
+
+  document.addEventListener("click", event => {
+    if (!event.target.closest("#headToHeadHero1") && !event.target.closest("#headToHeadHero1Suggestions")) suggestions1.hidden = true;
+    if (!event.target.closest("#headToHeadHero2") && !event.target.closest("#headToHeadHero2Suggestions")) suggestions2.hidden = true;
+  });
+
+  function renderMatch(match) {
+    return `<article class="hero-match-row">
+      <div class="hero-match-top"><strong>${escapeHtml(match.date || "Дата не указана")}</strong><span>${escapeHtml(match.map || "Поле не указано")}</span></div>
+      <div class="hero-match-vs"><strong>${escapeHtml(match.player1 || "?")}</strong> — ⚔️ ${escapeHtml(match.hero1 || "?")}<br>VS<br><strong>${escapeHtml(match.player2 || "?")}</strong> — ⚔️ ${escapeHtml(match.hero2 || "?")}</div>
+      <div class="hero-match-meta">Победитель: ${escapeHtml(match.winner || "не указан")} · ${match.result_for_hero1 === "unresolved" ? "Результат не определён" : `${escapeHtml(match.result_for_hero1 === "win" ? match.hero1 : match.hero2)} победил`}</div>
+    </article>`;
+  }
+
+  async function loadReport() {
+    if (state.hero1.toLowerCase() === state.hero2.toLowerCase()) {
+      results.innerHTML = '<p class="hero-empty">Выберите двух разных героев.</p>'; return;
+    }
+    results.innerHTML = '<p>Загружаем очные встречи…</p>';
+    try {
+      const response = await fetch(`/api/hero_head_to_head?hero1=${encodeURIComponent(state.hero1)}&hero2=${encodeURIComponent(state.hero2)}`);
+      const report = await response.json();
+      if (!response.ok) throw new Error(report.error || "Ошибка загрузки отчёта");
+      const statCard = (hero, stats) => `<div class="hero-report-stat"><span>${escapeHtml(hero)} · Win Rate</span><strong>${String(stats.winrate).replace(".", ",")}%</strong><small>${stats.wins} побед · ${stats.losses} поражений</small></div>`;
+      results.innerHTML = `
+        <div class="hero-report-stats">
+          <div class="hero-report-stat"><span>Очных матчей</span><strong>${report.matches.length}</strong><small>${report.stats1.unresolved} с неопределённым результатом</small></div>
+          ${statCard(report.hero1, report.stats1)}
+          ${statCard(report.hero2, report.stats2)}
+        </div>
+        <section class="hero-match-group"><h3>Все матчи между героями <span>${report.matches.length}</span></h3>
+          ${report.matches.length ? report.matches.map(renderMatch).join("") : '<p class="hero-empty">В таблице Matches пока нет матчей между этими героями.</p>'}
+        </section>`;
+    } catch (error) {
+      results.innerHTML = `<p class="hero-empty">${escapeHtml(error.message || "Не удалось загрузить отчёт. Попробуйте ещё раз.")}</p>`;
     }
   }
 })();

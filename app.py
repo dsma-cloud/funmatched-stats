@@ -12,7 +12,8 @@ from sheets import (
     search_heroes,
     search_maps,
     hero_match_report,
-    player_match_report
+    player_match_report,
+    hero_head_to_head_report
 )
 
 
@@ -160,6 +161,31 @@ def player_report():
     if not player:
         return jsonify({"error": "Укажите игрока"}), 400
     return jsonify(player_match_report(player))
+
+
+# =========================
+# Противостояние двух героев
+# =========================
+@app.route("/api/hero_head_to_head")
+def hero_head_to_head():
+    hero1 = request.args.get("hero1", "").strip()
+    hero2 = request.args.get("hero2", "").strip()
+    if not hero1 or not hero2:
+        return jsonify({"error": "Выберите обоих героев."}), 400
+    if hero1.casefold() == hero2.casefold():
+        return jsonify({"error": "Выберите двух разных героев."}), 400
+    try:
+        # Не принимаем произвольные значения: оба героя должны быть в справочнике Heroes.
+        known_heroes = search_heroes(hero1)
+        if not any(str(item).strip().casefold() == hero1.casefold() for item in known_heroes):
+            return jsonify({"error": f"Герой «{hero1}» не найден в таблице Heroes."}), 400
+        known_heroes = search_heroes(hero2)
+        if not any(str(item).strip().casefold() == hero2.casefold() for item in known_heroes):
+            return jsonify({"error": f"Герой «{hero2}» не найден в таблице Heroes."}), 400
+        return jsonify(hero_head_to_head_report(hero1, hero2))
+    except Exception:
+        app.logger.exception("Ошибка формирования отчёта противостояния героев")
+        return jsonify({"error": "Не удалось загрузить отчёт. Попробуйте позже."}), 500
 
 
 # =========================
