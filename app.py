@@ -8,7 +8,9 @@ from sheets import (
     dashboard_last_match,
     dashboard_stats,
     add_match,
+    search_players,
     search_heroes,
+    search_maps,
     hero_match_report
 )
 
@@ -138,6 +140,33 @@ def hero_report():
 
 
 # =========================
+# Подсказки для формы добавления матча
+# Источник — только соответствующие справочники Google Sheets
+# =========================
+@app.route("/api/match_lookup")
+def match_lookup():
+    lookup_type = request.args.get("type", "").strip().lower()
+    query = request.args.get("q", "").strip()
+    if len(query) < 2:
+        return jsonify([])
+
+    lookup_functions = {
+        "players": search_players,
+        "heroes": search_heroes,
+        "maps": search_maps,
+    }
+    lookup = lookup_functions.get(lookup_type)
+    if lookup is None:
+        return jsonify({"error": "Неизвестный тип поиска."}), 400
+
+    try:
+        return jsonify(lookup(query)[:20])
+    except Exception:
+        app.logger.exception("Ошибка поиска значений для формы матча")
+        return jsonify({"error": "Не удалось загрузить варианты из таблицы."}), 500
+
+
+# =========================
 # Добавление матча из Mini App
 # =========================
 @app.route("/api/matches", methods=["POST"])
@@ -152,6 +181,26 @@ def create_match():
 
     if match["winner"] not in ("Player 1", "Player 2"):
         return jsonify({"error": "Выберите победителя: Player 1 или Player 2."}), 400
+
+    # Проверяем значения по справочникам до записи. Нельзя создать нового
+    # игрока, героя или поле через форму Mini App.
+    directories = (
+        ("player1", search_players, "игроков", "Players"),
+        ("player2", search_players, "игроков", "Players"),
+        ("hero1", search_heroes, "героев", "Heroes"),
+        ("hero2", search_heroes, "героев", "Heroes"),
+        ("map", search_maps, "полей", "Maps"),
+    )
+    for field, lookup, label, sheet_name in directories:
+        try:
+            matches = lookup(match[field])
+        except Exception:
+            app.logger.exception("Не удалось проверить значение в справочнике %s", sheet_name)
+            return jsonify({"error": f"Не удалось проверить {label[:-1]} в таблице {sheet_name}. Попробуйте позже."}), 500
+        if not any(str(item).strip().casefold() == match[field].casefold() for item in matches):
+            return jsonify({
+                "error": f"Значение «{match[field]}» не найдено в таблице {sheet_name}. Выберите вариант из подсказок; новые записи через эту форму не создаются."
+            }), 400
 
     match["date"] = str(data.get("date", "")).strip()
     if not match["date"]:

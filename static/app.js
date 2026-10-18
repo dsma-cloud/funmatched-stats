@@ -498,6 +498,38 @@ ${index + 1}. ${map.map}
   document.getElementById("cancelAddMatch").addEventListener("click", closeModal);
   modal.querySelectorAll("[data-close-add-match]").forEach(el => el.addEventListener("click", closeModal));
 
+  // Подсказки загружаются из справочников Players, Heroes и Maps.
+  const lookupTimers = new WeakMap();
+  form.querySelectorAll("input[data-lookup]").forEach(input => {
+    input.addEventListener("input", () => {
+      const query = input.value.trim();
+      const list = document.getElementById(input.getAttribute("list"));
+      if (!list) return;
+      list.replaceChildren();
+      if (query.length < 2) return;
+      const previousTimer = lookupTimers.get(input);
+      if (previousTimer) clearTimeout(previousTimer);
+      const timer = setTimeout(async () => {
+        try {
+          const params = new URLSearchParams({ type: input.dataset.lookup, q: query });
+          const response = await fetch(`/api/match_lookup?${params.toString()}`);
+          if (!response.ok) return;
+          const values = await response.json();
+          // Не показываем устаревшие результаты, если пользователь уже продолжил ввод.
+          if (input.value.trim() !== query) return;
+          list.replaceChildren(...values.map(value => {
+            const option = document.createElement("option");
+            option.value = value;
+            return option;
+          }));
+        } catch (error) {
+          console.error("Не удалось загрузить варианты из справочника:", error);
+        }
+      }, 180);
+      lookupTimers.set(input, timer);
+    });
+  });
+
   form.addEventListener("submit", async event => {
     event.preventDefault();
     if (!form.reportValidity()) return;
