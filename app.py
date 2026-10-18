@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, request
 
 
 from sheets import (
@@ -6,7 +6,9 @@ from sheets import (
     dashboard_heroes,
     dashboard_maps,
     dashboard_last_match,
-    dashboard_stats
+    dashboard_stats,
+    search_heroes,
+    hero_match_report
 )
 
 
@@ -110,3 +112,25 @@ def stats():
         dashboard_stats()
     )
 
+
+
+# =========================
+# Поиск героя для отчёта
+# =========================
+@app.route("/api/hero_search")
+def hero_search():
+    query = request.args.get("q", "").strip()
+    if len(query) < 2:
+        return jsonify([])
+    return jsonify(search_heroes(query)[:20])
+
+
+# =========================
+# Отчёт по герою
+# =========================
+@app.route("/api/hero_report")
+def hero_report():
+    hero = request.args.get("hero", "").strip()
+    if not hero:
+        return jsonify({"error": "Укажите героя"}), 400
+    return jsonify(hero_match_report(hero))

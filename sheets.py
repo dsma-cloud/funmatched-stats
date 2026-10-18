@@ -367,3 +367,62 @@ def dashboard_stats():
         "maps": rows[3][1]
 
     }
+
+# =========================
+# Отчёт по выбранному герою
+# =========================
+
+def hero_match_report(hero_name):
+    """Возвращает все матчи выбранного героя и сводную статистику."""
+    hero_name = (hero_name or "").strip()
+    if not hero_name:
+        return {"hero": "", "stats": {"games": 0, "wins": 0, "losses": 0, "winrate": 0}, "wins": [], "losses": [], "unresolved": []}
+
+    rows = get_sheet("Matches").get_all_values()
+    wins, losses, unresolved = [], [], []
+    target = hero_name.casefold()
+
+    # Matches columns: ID, Date, Player1, Hero1, Player2, Hero2, Map, Winner, Duration, Notes
+    for row in rows[1:]:
+        row = row + [""] * max(0, 10 - len(row))
+        match_id, date, player1, hero1, player2, hero2, map_name, winner = row[:8]
+        side = 1 if hero1.strip().casefold() == target else (2 if hero2.strip().casefold() == target else 0)
+        if not side:
+            continue
+
+        winner_text = winner.strip().casefold()
+        player1_text = player1.strip().casefold()
+        player2_text = player2.strip().casefold()
+        won_side = 0
+        if winner_text in {"player 1", "player1", "1", player1_text} and winner_text:
+            won_side = 1
+        elif winner_text in {"player 2", "player2", "2", player2_text} and winner_text:
+            won_side = 2
+
+        item = {
+            "id": match_id, "date": date,
+            "player1": player1, "hero1": hero1,
+            "player2": player2, "hero2": hero2,
+            "map": map_name, "winner": winner,
+            "hero_player": player1 if side == 1 else player2,
+            "opponent_player": player2 if side == 1 else player1,
+            "opponent_hero": hero2 if side == 1 else hero1,
+        }
+        if not won_side:
+            unresolved.append(item)
+        elif won_side == side:
+            wins.append(item)
+        else:
+            losses.append(item)
+
+    games = len(wins) + len(losses) + len(unresolved)
+    decided = len(wins) + len(losses)
+    return {
+        "hero": hero_name,
+        "stats": {
+            "games": games, "wins": len(wins), "losses": len(losses),
+            "unresolved": len(unresolved),
+            "winrate": round(len(wins) / decided * 100, 1) if decided else 0
+        },
+        "wins": wins, "losses": losses, "unresolved": unresolved
+    }

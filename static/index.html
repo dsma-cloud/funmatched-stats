@@ -131,6 +131,23 @@ Funmatched Stats
 
 
 <!-- =========================
+     Отчёт по герою
+========================= -->
+<section class="card hero-report" id="heroReportSection">
+  <h2>🔎 Отчёт по герою</h2>
+  <p class="report-description">Найдите героя, чтобы посмотреть все его матчи, победы, поражения и процент побед.</p>
+  <div class="hero-search-wrap">
+    <input id="heroSearchInput" type="search" placeholder="Начните вводить имя героя…" autocomplete="off" aria-label="Поиск героя">
+    <div id="heroSearchSuggestions" class="hero-suggestions" hidden></div>
+  </div>
+  <div id="heroReportResults" aria-live="polite"><p>Введите не менее двух символов для поиска.</p></div>
+</section>
+
+<style>
+.hero-report{margin:20px 0}.report-description{opacity:.78;margin-top:-4px}.hero-search-wrap{position:relative;max-width:520px;margin:14px 0 20px}.hero-search-wrap input{box-sizing:border-box;width:100%;padding:13px 14px;border:1px solid var(--border-color,#ccc);border-radius:10px;font:inherit;background:var(--input-background,#fff);color:inherit}.hero-suggestions{position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:260px;overflow:auto;border:1px solid #ccc;border-radius:10px;background:var(--background-content,#fff);box-shadow:0 8px 24px #0002}.hero-suggestion{display:block;width:100%;text-align:left;padding:11px 14px;border:0;border-bottom:1px solid #0001;background:transparent;color:inherit;font:inherit;cursor:pointer}.hero-suggestion:hover{background:#8882}.hero-report-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}.hero-report-stat{padding:14px;border-radius:12px;background:var(--field-background,#8881)}.hero-report-stat span{display:block;font-size:.88em;opacity:.75}.hero-report-stat strong{display:block;font-size:1.55em;margin-top:5px}.hero-match-group{margin:18px 0}.hero-match-group h3{display:flex;justify-content:space-between;gap:8px;align-items:center}.hero-match-row{padding:12px 14px;border:1px solid #8883;border-radius:10px;margin:9px 0}.hero-match-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}.hero-match-vs{margin:4px 0}.hero-match-meta{font-size:.9em;opacity:.75}.hero-empty{opacity:.75;padding:12px 0}@media(max-width:600px){.hero-report-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-report{padding:14px}.hero-match-row{padding:10px}}
+</style>
+
+<!-- =========================
      Игроки + Поля
 ========================= -->
 

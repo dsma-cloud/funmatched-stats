@@ -497,3 +497,80 @@ document.getElementById(
 
 
 loadDashboard();
+
+// =========================
+// Отчёт по выбранному герою
+// =========================
+(function initHeroReport() {
+  const input = document.getElementById("heroSearchInput");
+  const suggestions = document.getElementById("heroSearchSuggestions");
+  const results = document.getElementById("heroReportResults");
+  if (!input || !suggestions || !results) return;
+
+  let searchRequest = 0;
+  const escapeHtml = (value) => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#39;"}[ch]));
+
+  input.addEventListener("input", async () => {
+    const query = input.value.trim();
+    const requestId = ++searchRequest;
+    if (query.length < 2) { suggestions.hidden = true; suggestions.innerHTML = ""; return; }
+    try {
+      const response = await fetch(`/api/hero_search?q=${encodeURIComponent(query)}`);
+      if (!response.ok) throw new Error("Не удалось найти героев");
+      const heroes = await response.json();
+      if (requestId !== searchRequest) return;
+      suggestions.innerHTML = heroes.length
+        ? heroes.map(hero => `<button type="button" class="hero-suggestion" data-hero="${escapeHtml(hero)}">${escapeHtml(hero)}</button>`).join("")
+        : '<div class="hero-suggestion">Ничего не найдено</div>';
+      suggestions.hidden = false;
+    } catch (error) {
+      suggestions.hidden = true;
+      results.innerHTML = '<p class="hero-empty">Не удалось выполнить поиск. Попробуйте ещё раз.</p>';
+    }
+  });
+
+  suggestions.addEventListener("click", event => {
+    const button = event.target.closest("button[data-hero]");
+    if (!button) return;
+    input.value = button.dataset.hero;
+    suggestions.hidden = true;
+    loadHeroReport(button.dataset.hero);
+  });
+
+  document.addEventListener("click", event => {
+    if (!event.target.closest(".hero-search-wrap")) suggestions.hidden = true;
+  });
+
+  function renderMatch(match) {
+    return `<article class="hero-match-row">
+      <div class="hero-match-top"><strong>${escapeHtml(match.date || "Дата не указана")}</strong><span>${escapeHtml(match.map || "Поле не указано")}</span></div>
+      <div class="hero-match-vs"><strong>${escapeHtml(match.player1 || "?")}</strong> — ⚔️ ${escapeHtml(match.hero1 || "?")}<br>VS<br><strong>${escapeHtml(match.player2 || "?")}</strong> — ⚔️ ${escapeHtml(match.hero2 || "?")}</div>
+      <div class="hero-match-meta">Победитель: ${escapeHtml(match.winner || "не указан")}</div>
+    </article>`;
+  }
+
+  async function loadHeroReport(hero) {
+    results.innerHTML = '<p>Загружаем матчи героя…</p>';
+    try {
+      const response = await fetch(`/api/hero_report?hero=${encodeURIComponent(hero)}`);
+      const report = await response.json();
+      if (!response.ok) throw new Error(report.error || "Ошибка загрузки отчёта");
+      const stats = report.stats;
+      const group = (title, count, list, icon) => `<section class="hero-match-group"><h3>${icon} ${title}<span>${count}</span></h3>${list.length ? list.map(renderMatch).join("") : '<p class="hero-empty">Матчей в этой группе пока нет.</p>'}</section>`;
+      results.innerHTML = `
+        <h3>Статистика: ${escapeHtml(report.hero)}</h3>
+        <div class="hero-report-stats">
+          <div class="hero-report-stat"><span>Всего матчей</span><strong>${stats.games}</strong></div>
+          <div class="hero-report-stat"><span>Победы</span><strong>${stats.wins}</strong></div>
+          <div class="hero-report-stat"><span>Поражения</span><strong>${stats.losses}</strong></div>
+          <div class="hero-report-stat"><span>Win Rate</span><strong>${String(stats.winrate).replace(".", ",")}%</strong></div>
+        </div>
+        ${group("Победы героя", stats.wins, report.wins, "🏆")}
+        ${group("Поражения героя", stats.losses, report.losses, "❌")}
+        ${stats.unresolved ? group("Не удалось определить результат", stats.unresolved, report.unresolved, "❔") : ""}
+      `;
+    } catch (error) {
+      results.innerHTML = '<p class="hero-empty">Не удалось загрузить отчёт. Проверьте соединение и попробуйте ещё раз.</p>';
+    }
+  }
+})();
