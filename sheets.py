@@ -767,3 +767,42 @@ def hero_development_report(start_value, end_value):
         })
     result.sort(key=lambda item: (abs(item["change"]), item["period_games"]), reverse=True)
     return {"from": start_day.isoformat(), "to": end_day.isoformat(), "heroes": result}
+
+
+def heroes_not_in_rating_report():
+    """Список героев, сыгравших менее 30 матчей, по группам в 10 игр."""
+    heroes_rows = get_sheet("Heroes").get_all_values()
+    matches_rows = get_sheet("Matches").get_all_values()
+
+    # Каталог героев: название хранится во втором столбце листа Heroes.
+    names = {}
+    for row in heroes_rows[1:]:
+        if len(row) > 1 and row[1].strip():
+            name = row[1].strip()
+            names.setdefault(name.casefold(), name)
+
+    counts = {key: 0 for key in names}
+    # Matches columns: ID, Date, Player1, Hero1, Player2, Hero2, Map, Winner, ...
+    for row in matches_rows[1:]:
+        row = row + [""] * max(0, 6 - len(row))
+        for index in (3, 5):
+            hero = row[index].strip()
+            if hero:
+                key = hero.casefold()
+                if key not in names:
+                    names[key] = hero
+                    counts[key] = 0
+                counts[key] = counts.get(key, 0) + 1
+
+    heroes = [
+        {"hero": names[key], "games": games}
+        for key, games in counts.items() if games < 30
+    ]
+    heroes.sort(key=lambda item: (-item["games"], item["hero"].casefold()))
+
+    groups = []
+    for lower in (0, 10, 20):
+        upper = lower + 9
+        items = [hero for hero in heroes if lower <= hero["games"] <= upper]
+        groups.append({"min_games": lower, "max_games": upper, "count": len(items), "heroes": items})
+    return {"total": len(heroes), "groups": groups}

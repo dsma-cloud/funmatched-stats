@@ -16,7 +16,8 @@ from sheets import (
     hero_head_to_head_report,
     player_head_to_head_report,
     player_rating_last_7_days,
-    hero_development_report
+    hero_development_report,
+    heroes_not_in_rating_report
 )
 
 
@@ -313,3 +314,12 @@ def hero_development_api():
     except Exception:
         app.logger.exception("Ошибка формирования отчёта развития героя")
         return jsonify({"error": "Не удалось загрузить отчёт развития героя."}), 500
+
+
+@app.route("/api/heroes_not_in_rating")
+def heroes_not_in_rating_api():
+    try:
+        return jsonify(heroes_not_in_rating_report())
+    except Exception:
+        app.logger.exception("Ошибка формирования отчёта героев вне рейтинга")
+        return jsonify({"error": "Не удалось загрузить список героев вне рейтинга."}), 500

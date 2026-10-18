@@ -586,7 +586,7 @@ ${index + 1}. ${map.map}
     const option = event.target.closest("button[data-open-report]");
     if (!option) return;
     const targetId = option.dataset.openReport;
-    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection, #playerRating7DaysSection, #heroDevelopmentSection").forEach(section => {
+    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection, #playerRating7DaysSection, #heroDevelopmentSection, #heroesNotInRatingSection").forEach(section => {
       section.hidden = section.id !== targetId;
     });
     menu.hidden = true;
@@ -597,6 +597,7 @@ ${index + 1}. ${map.map}
     if (targetId === "heroHeadToHeadSection") document.getElementById("headToHeadHero1")?.focus({ preventScroll: true });
     if (targetId === "playerHeadToHeadSection") document.getElementById("headToHeadPlayer1")?.focus({ preventScroll: true });
     if (targetId === "playerRating7DaysSection") loadPlayerRating7Days();
+    if (targetId === "heroesNotInRatingSection") loadHeroesNotInRating();
   });
 
   document.querySelectorAll("[data-close-report]").forEach(button => {
@@ -1062,3 +1063,18 @@ async function loadHeroDevelopment() {
   }
   run?.addEventListener("click", loadHeroDevelopment);
 })();
+
+
+async function loadHeroesNotInRating() {
+  const results = document.getElementById("heroesNotInRatingResults");
+  if (!results) return;
+  results.innerHTML = '<p>Загружаем список героев…</p>';
+  try {
+    const response = await fetch("/api/heroes_not_in_rating");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Не удалось загрузить список героев.");
+    const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;"}[char]));
+    if (!data.total) { results.innerHTML = '<p class="hero-empty">Героев с количеством игр меньше 30 не найдено.</p>'; return; }
+    results.innerHTML = `<p class="report-description">Всего героев вне рейтинга: ${data.total}. Внутри каждой группы сначала герои с большим количеством игр.</p>${(data.groups || []).map(group => `<details class="unrated-hero-group"><summary>${group.min_games}–${group.max_games} игр <span class="unrated-hero-count">(${group.count} гер.)</span></summary><div class="unrated-hero-list">${group.heroes.length ? group.heroes.map(hero => `<div class="unrated-hero-row"><span>${escapeHtml(hero.hero)}</span><span class="unrated-hero-count">${hero.games} ${hero.games === 1 ? "игра" : hero.games >= 2 && hero.games <= 4 ? "игры" : "игр"}</span></div>`).join("") : '<p class="hero-empty">В этой группе героев нет.</p>'}</div></details>`).join("")}`;
+  } catch (error) { results.innerHTML = `<p class="hero-empty">${String(error.message || "Ошибка загрузки списка героев.")}</p>`; }
+}
