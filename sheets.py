@@ -806,3 +806,54 @@ def heroes_not_in_rating_report():
         items = [hero for hero in heroes if lower <= hero["games"] <= upper]
         groups.append({"min_games": lower, "max_games": upper, "count": len(items), "heroes": items})
     return {"total": len(heroes), "groups": groups}
+
+
+
+def matches_period_report(start_value, end_value):
+    """Матчи за указанный период, сгруппированные по героям."""
+    start_day = datetime.strptime(start_value, "%Y-%m-%d").date()
+    end_day = datetime.strptime(end_value, "%Y-%m-%d").date()
+    if end_day < start_day:
+        raise ValueError("Дата окончания периода должна быть не раньше даты начала.")
+
+    rows = get_sheet("Matches").get_all_values()
+    grouped = {}
+
+    def parse_date(value):
+        value = (value or "").strip()
+        if not value:
+            return None
+        for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d"):
+            try:
+                return datetime.strptime(value[:10], fmt).date()
+            except ValueError:
+                pass
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+        except ValueError:
+            return None
+
+    total_match_keys = set()
+    for row in rows[1:]:
+        row = row + [""] * max(0, 8 - len(row))
+        match_id, date_value, player1, hero1, player2, hero2, map_name, winner = row[:8]
+        day = parse_date(date_value)
+        if day is None or not (start_day <= day <= end_day):
+            continue
+        match = {
+            "id": match_id.strip(), "date": day.strftime("%d.%m.%Y"),
+            "player1": player1.strip(), "hero1": hero1.strip(),
+            "player2": player2.strip(), "hero2": hero2.strip(),
+            "map": map_name.strip(), "winner": winner.strip()
+        }
+        total_match_keys.add(match_id.strip() or f"{date_value}|{player1}|{hero1}|{player2}|{hero2}")
+        for hero in {hero1.strip(), hero2.strip()}:
+            if hero:
+                grouped.setdefault(hero.casefold(), {"hero": hero.strip(), "matches": []})["matches"].append(match)
+
+    groups = list(grouped.values())
+    for group in groups:
+        group["matches"].sort(key=lambda item: (item["date"], item["id"]), reverse=True)
+        group["count"] = len(group["matches"])
+    groups.sort(key=lambda item: item["hero"].casefold())
+    return {"from": start_day.isoformat(), "to": end_day.isoformat(), "total": len(total_match_keys), "groups": groups}

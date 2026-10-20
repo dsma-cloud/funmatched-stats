@@ -93,6 +93,7 @@ Funmatched Stats
     <button type="button" data-open-report="playerRating7DaysSection">📈 Рейтинг игроков за 7 дней</button>
     <button type="button" data-open-report="heroDevelopmentSection">📊 Развитие героя</button>
     <button type="button" data-open-report="heroesNotInRatingSection">🧩 Герои не в рейтинге</button>
+    <button type="button" data-open-report="matchesPeriodSection">🗓️ Матчи за период</button>
   </div>
 </div>
 
@@ -153,7 +154,7 @@ Funmatched Stats
 
 <style>
 .add-match-modal[hidden]{display:none}.add-match-modal{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}.add-match-backdrop{position:absolute;inset:0;background:#0008}.add-match-dialog{position:relative;z-index:1;width:min(620px,100%);max-height:90vh;overflow:auto;padding:24px;box-sizing:border-box;background:var(--background-content,#fff);color:inherit}.add-match-close{position:absolute;right:12px;top:12px;border:0;background:transparent;font-size:20px;cursor:pointer}.add-match-notes{margin:12px 0 18px;padding:12px 14px;border-radius:10px;background:var(--background-secondary,#f4f5f7);font-size:.92em;line-height:1.45}.add-match-notes ul{margin:8px 0 0;padding-left:20px}.add-match-notes li{margin:5px 0}.add-match-notes a{text-decoration:underline}.lookup-hint{margin:0;font-size:.9em;line-height:1.4;color:var(--text-secondary,#666)}.add-match-dialog form{display:grid;gap:13px}.add-match-dialog label{display:grid;gap:6px;font-weight:600}.add-match-dialog input,.add-match-dialog select{box-sizing:border-box;width:100%;min-width:0;padding:11px 12px;border:1px solid #8886;border-radius:9px;font:inherit;background:var(--input-background,#fff);color:inherit}.add-match-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.add-match-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}.add-match-actions button{padding:11px 15px;border-radius:9px;border:1px solid #8885;font:inherit;cursor:pointer}.add-match-message{font-size:.95em}.add-match-message.error{color:#c62828}.add-match-message.success{color:#16803c}@media(max-width:520px){.add-match-dialog{padding:20px 14px}.add-match-grid{grid-template-columns:1fr}.add-match-actions{display:grid;grid-template-columns:1fr 1fr}}
-.unrated-hero-group{border:1px solid #8883;border-radius:10px;margin:12px 0;overflow:hidden}.unrated-hero-group summary{cursor:pointer;padding:13px 14px;font-weight:600;list-style-position:inside}.unrated-hero-list{max-height:220px;overflow-y:auto;overscroll-behavior:contain;padding:0 12px 10px}.unrated-hero-row{display:flex;justify-content:space-between;gap:12px;padding:10px 4px;border-top:1px solid #8883}.unrated-hero-count{opacity:.78;white-space:nowrap}</style>
+.unrated-hero-group{border:1px solid #8883;border-radius:10px;margin:12px 0;overflow:hidden}.unrated-hero-group summary{cursor:pointer;padding:13px 14px;font-weight:600;list-style-position:inside}.unrated-hero-list{max-height:220px;overflow-y:auto;overscroll-behavior:contain;padding:0 12px 10px}.unrated-hero-row{display:flex;justify-content:space-between;gap:12px;padding:10px 4px;border-top:1px solid #8883}.unrated-hero-count{opacity:.78;white-space:nowrap}.period-hero-group{border:1px solid #8883;border-radius:10px;margin:12px 0;overflow:hidden}.period-hero-group summary{cursor:pointer;padding:13px 14px;font-weight:600;list-style-position:inside}.period-match-list{max-height:360px;overflow-y:auto;overscroll-behavior:contain;padding:0 12px 10px}.period-match-row{padding:10px 4px;border-top:1px solid #8883}.period-match-row strong{display:block;margin-bottom:4px}</style>
 
 <!-- =========================
      Герои
@@ -265,6 +266,18 @@ Funmatched Stats
   <div id="heroesNotInRatingResults" aria-live="polite"><p>Загрузка списка…</p></div>
 </section>
 
+<section class="card hero-report" id="matchesPeriodSection" hidden>
+  <button type="button" class="report-close" data-close-report="matchesPeriodSection" aria-label="Закрыть отчёт">✕</button>
+  <h2>🗓️ Матчи за период</h2>
+  <p class="report-description">Выберите период. Матчи сгруппированы по героям; группы свёрнуты по умолчанию.</p>
+  <div class="add-match-grid" style="margin:14px 0">
+    <label>Начало периода <input type="date" id="matchesPeriodStart" required></label>
+    <label>Конец периода <input type="date" id="matchesPeriodEnd" required></label>
+  </div>
+  <button type="button" id="matchesPeriodRun">Показать матчи</button>
+  <div id="matchesPeriodResults" aria-live="polite"><p>Выберите период и нажмите «Показать матчи».</p></div>
+</section>
+
 <section class="card hero-report" id="heroDevelopmentSection" hidden>
   <button type="button" class="report-close" data-close-report="heroDevelopmentSection" aria-label="Закрыть отчёт">✕</button>
   <h2>📊 Развитие героя</h2>
@@ -279,7 +292,7 @@ Funmatched Stats
 
 <style>
 .reports-menu-wrap{position:relative;display:inline-block;margin-top:8px}.reports-menu{position:absolute;z-index:100;top:calc(100% + 5px);right:0;min-width:210px;padding:6px;border:1px solid #8884;border-radius:10px;background:var(--background-content,#fff);box-shadow:0 8px 24px #0002}.reports-menu button{display:block;width:100%;padding:11px 12px;text-align:left;border:0;border-radius:7px;background:transparent;color:inherit;font:inherit;cursor:pointer}.reports-menu button:hover{background:#8882}.report-close{float:right;border:0;background:transparent;color:inherit;font-size:18px;cursor:pointer;padding:4px 8px}.hero-report[hidden],.reports-menu[hidden]{display:none}.hero-report{margin:20px 0}.report-description{opacity:.78;margin-top:-4px}.hero-search-wrap{position:relative;max-width:520px;margin:14px 0 20px}.hero-search-wrap input{box-sizing:border-box;width:100%;padding:13px 14px;border:1px solid var(--border-color,#ccc);border-radius:10px;font:inherit;background:var(--input-background,#fff);color:inherit}.hero-suggestions{position:absolute;z-index:20;top:calc(100% + 4px);left:0;right:0;max-height:260px;overflow:auto;border:1px solid #ccc;border-radius:10px;background:var(--background-content,#fff);box-shadow:0 8px 24px #0002}.hero-suggestion{display:block;width:100%;text-align:left;padding:11px 14px;border:0;border-bottom:1px solid #0001;background:transparent;color:inherit;font:inherit;cursor:pointer}.hero-suggestion:hover{background:#8882}.hero-report-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:18px 0}.hero-report-stat{padding:14px;border-radius:12px;background:var(--field-background,#8881)}.hero-report-stat span{display:block;font-size:.88em;opacity:.75}.hero-report-stat strong{display:block;font-size:1.55em;margin-top:5px}.hero-match-group{margin:18px 0}.hero-match-group h3{display:flex;justify-content:space-between;gap:8px;align-items:center}.hero-match-row{padding:12px 14px;border:1px solid #8883;border-radius:10px;margin:9px 0}.hero-match-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}.hero-match-vs{margin:4px 0}.hero-match-meta{font-size:.9em;opacity:.75}.hero-empty{opacity:.75;padding:12px 0}.player-report{scroll-margin-top:16px}.head-to-head-search-grid{margin-top:14px}.head-to-head-search-wrap{max-width:none;margin:0}.head-to-head-search-wrap label{display:block;margin-bottom:6px;font-weight:600}.hero-report-stats .hero-report-stat.wide{grid-column:span 2}@media(max-width:600px){.hero-report-stats{grid-template-columns:repeat(2,minmax(0,1fr))}.hero-report{padding:14px}.hero-match-row{padding:10px}}
-.unrated-hero-group{border:1px solid #8883;border-radius:10px;margin:12px 0;overflow:hidden}.unrated-hero-group summary{cursor:pointer;padding:13px 14px;font-weight:600;list-style-position:inside}.unrated-hero-list{max-height:220px;overflow-y:auto;overscroll-behavior:contain;padding:0 12px 10px}.unrated-hero-row{display:flex;justify-content:space-between;gap:12px;padding:10px 4px;border-top:1px solid #8883}.unrated-hero-count{opacity:.78;white-space:nowrap}</style>
+.unrated-hero-group{border:1px solid #8883;border-radius:10px;margin:12px 0;overflow:hidden}.unrated-hero-group summary{cursor:pointer;padding:13px 14px;font-weight:600;list-style-position:inside}.unrated-hero-list{max-height:220px;overflow-y:auto;overscroll-behavior:contain;padding:0 12px 10px}.unrated-hero-row{display:flex;justify-content:space-between;gap:12px;padding:10px 4px;border-top:1px solid #8883}.unrated-hero-count{opacity:.78;white-space:nowrap}.period-hero-group{border:1px solid #8883;border-radius:10px;margin:12px 0;overflow:hidden}.period-hero-group summary{cursor:pointer;padding:13px 14px;font-weight:600;list-style-position:inside}.period-match-list{max-height:360px;overflow-y:auto;overscroll-behavior:contain;padding:0 12px 10px}.period-match-row{padding:10px 4px;border-top:1px solid #8883}.period-match-row strong{display:block;margin-bottom:4px}</style>
 
 <!-- =========================
      Игроки + Поля

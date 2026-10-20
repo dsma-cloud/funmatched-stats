@@ -586,7 +586,7 @@ ${index + 1}. ${map.map}
     const option = event.target.closest("button[data-open-report]");
     if (!option) return;
     const targetId = option.dataset.openReport;
-    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection, #playerRating7DaysSection, #heroDevelopmentSection, #heroesNotInRatingSection").forEach(section => {
+    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection, #playerRating7DaysSection, #heroDevelopmentSection, #heroesNotInRatingSection, #matchesPeriodSection").forEach(section => {
       section.hidden = section.id !== targetId;
     });
     menu.hidden = true;
@@ -598,6 +598,7 @@ ${index + 1}. ${map.map}
     if (targetId === "playerHeadToHeadSection") document.getElementById("headToHeadPlayer1")?.focus({ preventScroll: true });
     if (targetId === "playerRating7DaysSection") loadPlayerRating7Days();
     if (targetId === "heroesNotInRatingSection") loadHeroesNotInRating();
+    if (targetId === "matchesPeriodSection") initMatchesPeriodDates();
   });
 
   document.querySelectorAll("[data-close-report]").forEach(button => {
@@ -1077,4 +1078,36 @@ async function loadHeroesNotInRating() {
     if (!data.total) { results.innerHTML = '<p class="hero-empty">Героев с количеством игр меньше 30 не найдено.</p>'; return; }
     results.innerHTML = `<p class="report-description">Всего героев вне рейтинга: ${data.total}. Внутри каждой группы сначала герои с большим количеством игр.</p>${(data.groups || []).map(group => `<details class="unrated-hero-group"><summary>${group.min_games}–${group.max_games} игр <span class="unrated-hero-count">(${group.count} гер.)</span></summary><div class="unrated-hero-list">${group.heroes.length ? group.heroes.map(hero => `<div class="unrated-hero-row"><span>${escapeHtml(hero.hero)}</span><span class="unrated-hero-count">${hero.games} ${hero.games === 1 ? "игра" : hero.games >= 2 && hero.games <= 4 ? "игры" : "игр"}</span></div>`).join("") : '<p class="hero-empty">В этой группе героев нет.</p>'}</div></details>`).join("")}`;
   } catch (error) { results.innerHTML = `<p class="hero-empty">${String(error.message || "Ошибка загрузки списка героев.")}</p>`; }
+}
+
+
+function initMatchesPeriodDates() {
+  const start = document.getElementById("matchesPeriodStart");
+  const end = document.getElementById("matchesPeriodEnd");
+  const run = document.getElementById("matchesPeriodRun");
+  const toIso = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+  if (start && end && !start.value && !end.value) {
+    const today = new Date();
+    end.value = toIso(today);
+    const first = new Date(today); first.setDate(first.getDate() - 6); start.value = toIso(first);
+  }
+  if (run && !run.dataset.bound) { run.addEventListener("click", loadMatchesPeriod); run.dataset.bound = "1"; }
+}
+
+async function loadMatchesPeriod() {
+  const start = document.getElementById("matchesPeriodStart")?.value;
+  const end = document.getElementById("matchesPeriodEnd")?.value;
+  const results = document.getElementById("matchesPeriodResults");
+  if (!results) return;
+  if (!start || !end) { results.innerHTML = '<p class="hero-empty">Выберите начало и конец периода.</p>'; return; }
+  if (end < start) { results.innerHTML = '<p class="hero-empty">Дата окончания должна быть не раньше даты начала.</p>'; return; }
+  results.innerHTML = '<p>Загружаем матчи…</p>';
+  try {
+    const response = await fetch(`/api/matches_period?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Не удалось загрузить матчи.');
+    const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    if (!data.total) { results.innerHTML = `<p class="hero-empty">За период ${esc(data.from)} — ${esc(data.to)} матчей не найдено.</p>`; return; }
+    results.innerHTML = `<p class="report-description">Период: ${esc(data.from)} — ${esc(data.to)}. Всего матчей: ${data.total}. Герои отсортированы по названию.</p>${data.groups.map(group => `<details class="period-hero-group"><summary>${esc(group.hero)} <span class="unrated-hero-count">(${group.count} матч.)</span></summary><div class="period-match-list">${group.matches.map(match => `<div class="period-match-row"><strong>${esc(match.date)}${match.winner ? ` · Победитель: ${esc(match.winner)}` : ''}</strong><div>${esc(match.player1)} — ${esc(match.hero1)} <span class="unrated-hero-count">vs</span> ${esc(match.player2)} — ${esc(match.hero2)}</div><div class="hero-match-meta">Поле: ${esc(match.map || 'Не указано')}</div></div>`).join('')}</div></details>`).join('')}`;
+  } catch (error) { results.innerHTML = `<p class="hero-empty">${String(error.message || 'Ошибка загрузки матчей.')}</p>`; }
 }
