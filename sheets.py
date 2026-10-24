@@ -315,34 +315,45 @@ def dashboard_maps():
 # =========================
 
 def dashboard_last_match():
+    """Возвращает последний заполненный матч напрямую из листа Matches."""
+    rows = get_sheet("Matches").get_all_values()
 
-    sheet = get_sheet("Dashboard")
+    # Структура Matches: ID, Date, Player1, Hero1, Player2, Hero2, Map, Winner, Duration, Notes
+    # Идём с конца, чтобы пропускать пустые строки и брать последнюю запись.
+    for row in reversed(rows[1:]):
+        if len(row) < 8:
+            continue
 
-    rows = sheet.get(
-        "R3:S13"
-    )
+        player1 = row[2].strip() if len(row) > 2 else ""
+        hero1 = row[3].strip() if len(row) > 3 else ""
+        player2 = row[4].strip() if len(row) > 4 else ""
+        hero2 = row[5].strip() if len(row) > 5 else ""
 
+        # Пустые/служебные строки не считаем матчами.
+        if not any((row[1].strip(), player1, hero1, player2, hero2)):
+            continue
+
+        return {
+            "date": row[1].strip(),
+            "player1": player1,
+            "hero1": hero1,
+            "player2": player2,
+            "hero2": hero2,
+            "map": row[6].strip() if len(row) > 6 else "",
+            "winner": row[7].strip() if len(row) > 7 else ""
+        }
 
     return {
-
-        "date": rows[1][1],
-
-
-        "player1": rows[3][0],
-        "hero1": rows[3][1],
-
-
-        "player2": rows[5][0],
-        "hero2": rows[5][1],
-
-
-        "map": rows[7][1],
-
-
-        "winner": rows[9][1]
-
+        "date": "",
+        "player1": "Нет матчей",
+        "hero1": "",
+        "player2": "",
+        "hero2": "",
+        "map": "",
+        "winner": ""
     }
-    
+
+
 def dashboard_stats():
 
     sheet = client.open(
