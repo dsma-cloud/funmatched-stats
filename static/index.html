@@ -94,6 +94,7 @@ Funmatched Stats
     <button type="button" data-open-report="heroDevelopmentSection">📊 Развитие героя</button>
     <button type="button" data-open-report="heroesNotInRatingSection">🧩 Герои не в рейтинге</button>
     <button type="button" data-open-report="matchesPeriodSection">🗓️ Матчи за период</button>
+    <button type="button" data-open-report="periodSummarySection">📋 Итоги за период</button>
   </div>
 </div>
 
@@ -288,6 +289,19 @@ Funmatched Stats
   </div>
   <button type="button" id="heroDevelopmentRun">Показать изменения</button>
   <div id="heroDevelopmentResults" aria-live="polite"><p>Выберите период и нажмите «Показать изменения».</p></div>
+</section>
+
+
+<section class="card hero-report" id="periodSummarySection" hidden>
+  <button type="button" class="report-close" data-close-report="periodSummarySection" aria-label="Закрыть отчёт">✕</button>
+  <h2>📋 Итоги за период</h2>
+  <p class="report-description">Комплексный обзор: рейтинг игроков, карточки трёх лидеров, изменение позиций героев и герои в шаге от рейтинга.</p>
+  <div class="add-match-grid" style="margin:14px 0">
+    <label>Начало периода <input type="date" id="periodSummaryStart" required></label>
+    <label>Конец периода <input type="date" id="periodSummaryEnd" required></label>
+  </div>
+  <button type="button" id="periodSummaryRun">Показать итоги</button>
+  <div id="periodSummaryResults" aria-live="polite"><p>Выберите период и нажмите «Показать итоги».</p></div>
 </section>
 
 <style>

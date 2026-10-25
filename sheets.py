@@ -868,3 +868,141 @@ def matches_period_report(start_value, end_value):
         group["count"] = len(group["matches"])
     groups.sort(key=lambda item: item["hero"].casefold())
     return {"from": start_day.isoformat(), "to": end_day.isoformat(), "total": len(total_match_keys), "groups": groups}
+
+
+
+def period_summary_report(start_value, end_value):
+    """Комплексный отчёт за период: игроки, лидеры, изменение рейтинга героев и близкие к рейтингу."""
+    start_day = datetime.strptime(start_value, "%Y-%m-%d").date()
+    end_day = datetime.strptime(end_value, "%Y-%m-%d").date()
+    if end_day < start_day:
+        raise ValueError("Дата окончания периода должна быть не раньше даты начала.")
+
+    rows = get_sheet("Matches").get_all_values()
+    matches = []
+
+    def parse_date(value):
+        value = (value or "").strip()
+        if not value:
+            return None
+        for fmt in ("%Y-%m-%d", "%d.%m.%Y", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d"):
+            try:
+                return datetime.strptime(value[:10], fmt).date()
+            except ValueError:
+                pass
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+        except ValueError:
+            return None
+
+    for row in rows[1:]:
+        row = row + [""] * max(0, 8 - len(row))
+        match_id, date_value, p1, h1, p2, h2, map_name, winner = row[:8]
+        day = parse_date(date_value)
+        if day is None:
+            continue
+        winner_text = winner.strip().casefold()
+        p1_won = winner_text in {"player 1", "player1", "1", p1.strip().casefold()}
+        p2_won = winner_text in {"player 2", "player2", "2", p2.strip().casefold()}
+        matches.append({"day": day, "p1": p1.strip(), "h1": h1.strip(), "p2": p2.strip(), "h2": h2.strip(),
+                        "map": map_name.strip(), "winner": winner.strip(), "p1_won": p1_won, "p2_won": p2_won,
+                        "decided": p1_won != p2_won})
+
+    # 1. Player rating for the selected period.
+    player_stats = {}
+    favorite_hero = {}
+    favorite_map = {}
+    for m in matches:
+        if not (start_day <= m["day"] <= end_day):
+            continue
+        for player, hero, won, lost in ((m["p1"], m["h1"], m["p1_won"], m["p2_won"]),
+                                        (m["p2"], m["h2"], m["p2_won"], m["p1_won"])):
+            if not player:
+                continue
+            st = player_stats.setdefault(player, {"player": player, "games": 0, "wins": 0, "losses": 0, "unresolved": 0})
+            st["games"] += 1
+            if m["decided"]:
+                st["wins"] += int(won)
+                st["losses"] += int(lost)
+            else:
+                st["unresolved"] += 1
+            if hero:
+                favorite_hero.setdefault(player, {})[hero] = favorite_hero.setdefault(player, {}).get(hero, 0) + 1
+            if m["map"]:
+                favorite_map.setdefault(player, {})[m["map"]] = favorite_map.setdefault(player, {}).get(m["map"], 0) + 1
+
+    players = list(player_stats.values())
+    for player in players:
+        decided = player["wins"] + player["losses"]
+        player["winrate"] = round(player["wins"] / decided * 100, 1) if decided else 0
+        player["favorite_hero"] = max(favorite_hero.get(player["player"], {}).items(), key=lambda x: (x[1], x[0].casefold()))[0] if favorite_hero.get(player["player"]) else "—"
+        player["favorite_map"] = max(favorite_map.get(player["player"], {}).items(), key=lambda x: (x[1], x[0].casefold()))[0] if favorite_map.get(player["player"]) else "—"
+    players.sort(key=lambda x: (-x["wins"], -x["winrate"], -x["games"], x["player"].casefold()))
+
+    # 2. Top three leaders.
+    leaders = players[:3]
+
+    # 3. Compare hero rank and win rate before the period vs at period end.
+    hero_names = {}
+    hero_stats_before = {}
+    hero_stats_after = {}
+    hero_total_counts = {}
+    for m in matches:
+        for hero in (m["h1"], m["h2"]):
+            if hero:
+                hero_names.setdefault(hero.casefold(), hero)
+                hero_total_counts[hero.casefold()] = hero_total_counts.get(hero.casefold(), 0) + 1
+        if m["day"] > end_day:
+            continue
+        for hero, won, played in ((m["h1"], m["p1_won"], m["p1_won"] or m["p2_won"]),
+                                  (m["h2"], m["p2_won"], m["p1_won"] or m["p2_won"])):
+            if not hero:
+                continue
+            key = hero.casefold()
+            if m["day"] < start_day:
+                st = hero_stats_before.setdefault(key, {"games": 0, "decided": 0, "wins": 0})
+                st["games"] += 1
+                if played:
+                    st["decided"] += 1; st["wins"] += int(won)
+            st = hero_stats_after.setdefault(key, {"games": 0, "decided": 0, "wins": 0})
+            st["games"] += 1
+            if played:
+                st["decided"] += 1; st["wins"] += int(won)
+
+    def ranked(stats):
+        eligible = []
+        for key, st in stats.items():
+            if st["games"] >= 30 and st["decided"]:
+                rate = st["wins"] / st["decided"] * 100
+                eligible.append({"key": key, "hero": hero_names.get(key, key), "games": st["games"], "winrate": round(rate, 1)})
+        eligible.sort(key=lambda x: (-x["winrate"], -x["games"], x["hero"].casefold()))
+        for i, item in enumerate(eligible, 1): item["rank"] = i
+        return {x["key"]: x for x in eligible}
+
+    before_rank, after_rank = ranked(hero_stats_before), ranked(hero_stats_after)
+    hero_changes = []
+    for key in set(before_rank) & set(after_rank):
+        old, new = before_rank[key], after_rank[key]
+        rank_change = old["rank"] - new["rank"]
+        rate_change = round(new["winrate"] - old["winrate"], 1)
+        if rank_change or rate_change:
+            hero_changes.append({"hero": new["hero"], "rank_before": old["rank"], "rank_after": new["rank"],
+                                 "rank_change": rank_change, "winrate_before": old["winrate"],
+                                 "winrate_after": new["winrate"], "winrate_change": rate_change,
+                                 "games_before": old["games"], "games_after": new["games"]})
+    hero_changes.sort(key=lambda x: (-abs(x["rank_change"]), -abs(x["winrate_change"]), x["hero"].casefold()))
+
+    # 4. Heroes with 25–29 games as of the selected end date.
+    near_rating = [{"hero": hero_names[key], "games": count} for key, count in hero_total_counts.items()
+                   if count < 30 and count >= 25 and any(m["day"] <= end_day and key in {m["h1"].casefold(), m["h2"].casefold()} for m in matches)]
+    # Recount strictly through the selected end date (including heroes not seen later).
+    counts_at_end = {}
+    for m in matches:
+        if m["day"] <= end_day:
+            for hero in (m["h1"], m["h2"]):
+                if hero: counts_at_end[hero.casefold()] = counts_at_end.get(hero.casefold(), 0) + 1
+    near_rating = [{"hero": hero_names.get(key, key), "games": count} for key, count in counts_at_end.items() if 25 <= count <= 29]
+    near_rating.sort(key=lambda x: (-x["games"], x["hero"].casefold()))
+
+    return {"from": start_day.isoformat(), "to": end_day.isoformat(), "players": players,
+            "leaders": leaders, "hero_changes": hero_changes, "near_rating": near_rating}

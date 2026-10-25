@@ -18,7 +18,8 @@ from sheets import (
     player_rating_last_7_days,
     hero_development_report,
     heroes_not_in_rating_report,
-    matches_period_report
+    matches_period_report,
+    period_summary_report
 )
 
 
@@ -339,3 +340,18 @@ def matches_period_api():
     except Exception:
         app.logger.exception("Ошибка формирования отчёта матчей за период")
         return jsonify({"error": "Не удалось загрузить матчи за период."}), 500
+
+
+@app.route("/api/period_summary")
+def period_summary_api():
+    try:
+        start_value = (request.args.get("start_date") or "").strip()
+        end_value = (request.args.get("end_date") or "").strip()
+        if not start_value or not end_value:
+            return jsonify({"error": "Укажите начало и конец периода."}), 400
+        return jsonify(period_summary_report(start_value, end_value))
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception:
+        app.logger.exception("Ошибка формирования комплексного отчёта за период")
+        return jsonify({"error": "Не удалось загрузить итоги за период."}), 500

@@ -1111,3 +1111,49 @@ async function loadMatchesPeriod() {
     results.innerHTML = `<p class="report-description">Период: ${esc(data.from)} — ${esc(data.to)}. Всего матчей: ${data.total}. Герои отсортированы по названию.</p>${data.groups.map(group => `<details class="period-hero-group"><summary>${esc(group.hero)} <span class="unrated-hero-count">(${group.count} матч.)</span></summary><div class="period-match-list">${group.matches.map(match => `<div class="period-match-row"><strong>${esc(match.date)}${match.winner ? ` · Победитель: ${esc(match.winner)}` : ''}</strong><div>${esc(match.player1)} — ${esc(match.hero1)} <span class="unrated-hero-count">vs</span> ${esc(match.player2)} — ${esc(match.hero2)}</div><div class="hero-match-meta">Поле: ${esc(match.map || 'Не указано')}</div></div>`).join('')}</div></details>`).join('')}`;
   } catch (error) { results.innerHTML = `<p class="hero-empty">${String(error.message || 'Ошибка загрузки матчей.')}</p>`; }
 }
+
+// =========================
+// Комплексный отчёт «Итоги за период»
+// =========================
+function initPeriodSummary() {
+  const start = document.getElementById("periodSummaryStart");
+  const end = document.getElementById("periodSummaryEnd");
+  const run = document.getElementById("periodSummaryRun");
+  const toIso = date => `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+  if (start && end && !start.value && !end.value) {
+    const today = new Date();
+    end.value = toIso(today);
+    const first = new Date(today); first.setDate(first.getDate() - 6); start.value = toIso(first);
+  }
+  if (run && !run.dataset.bound) { run.addEventListener("click", loadPeriodSummary); run.dataset.bound = "1"; }
+}
+
+async function loadPeriodSummary() {
+  const start = document.getElementById("periodSummaryStart")?.value;
+  const end = document.getElementById("periodSummaryEnd")?.value;
+  const results = document.getElementById("periodSummaryResults");
+  if (!results) return;
+  if (!start || !end) { results.innerHTML = '<p class="hero-empty">Выберите начало и конец периода.</p>'; return; }
+  if (end < start) { results.innerHTML = '<p class="hero-empty">Дата окончания должна быть не раньше даты начала.</p>'; return; }
+  results.innerHTML = '<p>Формируем комплексный отчёт…</p>';
+  try {
+    const response = await fetch(`/api/period_summary?start_date=${encodeURIComponent(start)}&end_date=${encodeURIComponent(end)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Не удалось загрузить итоги за период.");
+    const esc = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char]));
+    const fmt = value => { const p = (value || "").split("-"); return p.length === 3 ? `${p[2]}.${p[1]}.${p[0]}` : esc(value); };
+    const table = (headers, rows) => `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;min-width:480px"><thead><tr>${headers.map(h=>`<th style="text-align:left;padding:9px 7px">${h}</th>`).join("")}</tr></thead><tbody>${rows || `<tr><td colspan="${headers.length}" style="padding:10px 7px;opacity:.7">Нет данных за выбранный период.</td></tr>`}</tbody></table></div>`;
+    const playerRows = (data.players || []).map((p,i)=>`<tr style="border-top:1px solid #8883"><td style="padding:9px 7px">${i+1}</td><td style="padding:9px 7px">${esc(p.player)}</td><td style="padding:9px 7px;text-align:center">${p.games}</td><td style="padding:9px 7px;text-align:center">${p.wins}</td><td style="padding:9px 7px;text-align:center">${p.losses}</td><td style="padding:9px 7px;text-align:center">${p.winrate}%</td></tr>`).join("");
+    const leaderCards = (data.leaders || []).map((p,i)=>`<div class="hero-match-row"><strong>${i+1}. ${esc(p.player)}</strong><div class="hero-report-stats"><div class="hero-report-stat"><span>Винрейт</span><strong>${p.winrate}%</strong></div><div class="hero-report-stat"><span>Победы</span><strong>${p.wins}</strong></div><div class="hero-report-stat"><span>Любимый герой</span><strong style="font-size:1.05em">${esc(p.favorite_hero)}</strong></div><div class="hero-report-stat"><span>Любимое поле</span><strong style="font-size:1.05em">${esc(p.favorite_map)}</strong></div></div></div>`).join("");
+    const changeRows = (data.hero_changes || []).map(h=>`<tr style="border-top:1px solid #8883"><td style="padding:9px 7px">${esc(h.hero)}</td><td style="padding:9px 7px;text-align:center">${h.rank_before} → ${h.rank_after} (${h.rank_change > 0 ? "↑" : h.rank_change < 0 ? "↓" : "—"}${Math.abs(h.rank_change)})</td><td style="padding:9px 7px;text-align:center">${h.winrate_before}% → ${h.winrate_after}%</td><td style="padding:9px 7px;text-align:center">${h.winrate_change > 0 ? "+" : ""}${h.winrate_change} п.п.</td></tr>`).join("");
+    const nearRows = (data.near_rating || []).map(h=>`<tr style="border-top:1px solid #8883"><td style="padding:9px 7px">${esc(h.hero)}</td><td style="padding:9px 7px;text-align:center">${h.games} / 30</td><td style="padding:9px 7px;text-align:center">${30-h.games} игр до рейтинга</td></tr>`).join("");
+    results.innerHTML = `<p class="report-description">Период: ${fmt(data.from)} — ${fmt(data.to)}</p>
+      <h3>1. Рейтинг игроков</h3><p class="report-description">Сортировка по победам; при равенстве — по винрейту.</p>${table(["#","Игрок","Игры","Победы","Поражения","Винрейт"],playerRows)}
+      <h3>2. Три лидера периода</h3>${leaderCards || '<p class="hero-empty">Нет лидеров: за период не найдено матчей.</p>'}
+      <h3>3. Развитие героев</h3><p class="report-description">Изменение места в рейтинге героев (учитываются герои с 30+ играми) и изменение винрейта в процентных пунктах. Сравнение: до начала периода и по его окончание.</p>${table(["Герой","Место до → после","Винрейт до → после","Изменение"],changeRows)}
+      <h3>4. Вот-вот в рейтинге!</h3><p class="report-description">Герои, у которых к концу выбранного периода 25–29 игр.</p>${table(["Герой","Игры","До порога"],nearRows)}`;
+  } catch (error) { results.innerHTML = `<p class="hero-empty">${escError(error.message || "Ошибка загрузки отчёта.")}</p>`; }
+  function escError(value) { return String(value).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+}
+
+document.addEventListener("DOMContentLoaded", initPeriodSummary);
