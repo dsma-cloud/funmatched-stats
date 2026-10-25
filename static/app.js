@@ -586,7 +586,7 @@ ${index + 1}. ${map.map}
     const option = event.target.closest("button[data-open-report]");
     if (!option) return;
     const targetId = option.dataset.openReport;
-    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection, #playerRating7DaysSection, #heroDevelopmentSection, #heroesNotInRatingSection, #matchesPeriodSection").forEach(section => {
+    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection, #playerRating7DaysSection, #heroDevelopmentSection, #heroesNotInRatingSection, #matchesPeriodSection, #periodSummarySection").forEach(section => {
       section.hidden = section.id !== targetId;
     });
     menu.hidden = true;
@@ -599,6 +599,7 @@ ${index + 1}. ${map.map}
     if (targetId === "playerRating7DaysSection") loadPlayerRating7Days();
     if (targetId === "heroesNotInRatingSection") loadHeroesNotInRating();
     if (targetId === "matchesPeriodSection") initMatchesPeriodDates();
+    if (targetId === "periodSummarySection") initPeriodSummary();
   });
 
   document.querySelectorAll("[data-close-report]").forEach(button => {
