@@ -908,6 +908,9 @@ def period_summary_report(start_value, end_value):
                         "map": map_name.strip(), "winner": winner.strip(), "p1_won": p1_won, "p2_won": p2_won,
                         "decided": p1_won != p2_won})
 
+    # Number of matches played within the selected period (including unresolved results).
+    period_matches = sum(1 for m in matches if start_day <= m["day"] <= end_day)
+
     # 1. Player rating for the selected period.
     player_stats = {}
     favorite_hero = {}
@@ -939,8 +942,10 @@ def period_summary_report(start_value, end_value):
         player["favorite_map"] = max(favorite_map.get(player["player"], {}).items(), key=lambda x: (x[1], x[0].casefold()))[0] if favorite_map.get(player["player"]) else "—"
     players.sort(key=lambda x: (-x["wins"], -x["winrate"], -x["games"], x["player"].casefold()))
 
-    # 2. Top three leaders.
+    # 2. Top three leaders (from the full ranking).
     leaders = players[:3]
+    # The displayed player ranking is limited to the first 15 positions.
+    displayed_players = players[:15]
 
     # 3. Compare hero rank and win rate before the period vs at period end.
     hero_names = {}
@@ -1004,5 +1009,6 @@ def period_summary_report(start_value, end_value):
     near_rating = [{"hero": hero_names.get(key, key), "games": count} for key, count in counts_at_end.items() if 25 <= count <= 29]
     near_rating.sort(key=lambda x: (-x["games"], x["hero"].casefold()))
 
-    return {"from": start_day.isoformat(), "to": end_day.isoformat(), "players": players,
-            "leaders": leaders, "hero_changes": hero_changes, "near_rating": near_rating}
+    return {"from": start_day.isoformat(), "to": end_day.isoformat(), "total_matches": period_matches,
+            "players": displayed_players, "leaders": leaders,
+            "hero_changes": hero_changes, "near_rating": near_rating}
