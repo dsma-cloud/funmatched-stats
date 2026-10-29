@@ -934,7 +934,12 @@ def period_summary_report(start_value, end_value):
             if m["map"]:
                 favorite_map.setdefault(player, {})[m["map"]] = favorite_map.setdefault(player, {}).get(m["map"], 0) + 1
 
-    players = list(player_stats.values())
+    # Exclude placeholder players from the period summary ranking.
+    excluded_players = {"ноунейм 1", "ноунейм 2"}
+    players = [
+        player for player in player_stats.values()
+        if " ".join(player["player"].casefold().split()) not in excluded_players
+    ]
     for player in players:
         decided = player["wins"] + player["losses"]
         player["winrate"] = round(player["wins"] / decided * 100, 1) if decided else 0
