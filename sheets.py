@@ -655,7 +655,6 @@ def hero_catalog_report():
     if name_col is None:
         name_col = 1
     theme_col = find_col("theme", "тема")
-    image_col = find_col("image", "картинка", "изображение")
     tier_col = find_col("tier", "тир")
     complexity_col = find_col("complexity", "сложность")
     link_col = find_col("link", "ссылка", "url")
@@ -674,7 +673,7 @@ def hero_catalog_report():
         except (ValueError, AttributeError):
             complexity = 0
         grouped.setdefault(theme, []).append({
-            "name": name, "image": cell(image_col), "tier": cell(tier_col),
+            "name": name, "tier": cell(tier_col),
             "complexity": complexity, "link": cell(link_col)
         })
 
