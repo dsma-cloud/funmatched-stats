@@ -628,30 +628,62 @@ ${index + 1}. ${map.map}
 
 
 
+let heroCatalogData = null;
+
+function renderHeroCatalog() {
+  const target = document.getElementById("heroCatalogResults");
+  const grouping = document.getElementById("heroCatalogGrouping")?.value || "theme";
+  if (!target || !heroCatalogData) return;
+  const heroes = (heroCatalogData.groups || []).flatMap(group =>
+    (group.heroes || []).map(hero => ({ ...hero, theme: group.theme || "Без темы" }))
+  );
+  const grouped = new Map();
+  heroes.forEach(hero => {
+    let key;
+    if (grouping === "tier") key = hero.tier || "Без тира";
+    else if (grouping === "complexity") key = `${Math.max(0, Math.min(5, Number(hero.complexity) || 0))} из 5 звёзд`;
+    else key = hero.theme || "Без темы";
+    if (!grouped.has(key)) grouped.set(key, []);
+    grouped.get(key).push(hero);
+  });
+  let entries = [...grouped.entries()];
+  if (grouping === "complexity") {
+    entries.sort((a, b) => Number(b[0].match(/^\d+/)?.[0] || 0) - Number(a[0].match(/^\d+/)?.[0] || 0));
+  } else {
+    entries.sort((a, b) => a[0].localeCompare(b[0], "ru", { sensitivity: "base" }));
+  }
+  target.innerHTML = entries.map(([label, items]) => `
+    <details class="hero-catalog-theme">
+      <summary>${escapeHtml(label)} <span>(${items.length})</span></summary>
+      <div class="hero-catalog-list">${items.sort((a, b) => String(a.name).localeCompare(String(b.name), "ru", { sensitivity: "base" })).map(hero => {
+        const link = (() => { try { const url = new URL(hero.link, window.location.origin); return ["http:", "https:"].includes(url.protocol) ? url.href : ""; } catch (_) { return ""; } })();
+        const title = link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(hero.name)}</a>` : `<strong>${escapeHtml(hero.name)}</strong>`;
+        const complexity = Math.max(0, Math.min(5, Number(hero.complexity) || 0));
+        return `<article class="hero-catalog-card"><div class="hero-catalog-info">${title}<div class="hero-catalog-meta">Тир: ${escapeHtml(hero.tier || "—")}</div><div class="hero-catalog-stars" aria-label="Сложность ${complexity} из 5">${"★".repeat(complexity)}${"☆".repeat(5-complexity)}</div></div></article>`;
+      }).join("")}</div>
+    </details>`).join("") || "<p>В таблице Heroes пока нет героев.</p>";
+}
+
 async function loadHeroCatalog() {
   const target = document.getElementById("heroCatalogResults");
   if (!target) return;
+  if (heroCatalogData) { renderHeroCatalog(); return; }
   target.innerHTML = "<p>Загрузка каталога…</p>";
   try {
     const response = await fetch("/api/hero_catalog");
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Не удалось загрузить каталог.");
-    const safeUrl = value => {
-      try { const url = new URL(value, window.location.origin); return ["http:", "https:"].includes(url.protocol) ? url.href : ""; } catch (_) { return ""; }
-    };
-    target.innerHTML = (data.groups || []).map(group => `
-      <details class="hero-catalog-theme">
-        <summary>${escapeHtml(group.theme)} <span>(${group.heroes.length})</span></summary>
-        <div class="hero-catalog-list">${group.heroes.map(hero => {
-          const link = safeUrl(hero.link);
-          const title = link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(hero.name)}</a>` : `<strong>${escapeHtml(hero.name)}</strong>`;
-          return `<article class="hero-catalog-card"><div class="hero-catalog-info">${title}<div class="hero-catalog-meta">Тир: ${escapeHtml(hero.tier || "—")}</div><div class="hero-catalog-stars" aria-label="Сложность ${hero.complexity} из 5">${"★".repeat(hero.complexity)}${"☆".repeat(5-hero.complexity)}</div></div></article>`;
-        }).join("")}</div>
-      </details>`).join("") || "<p>В таблице Heroes пока нет героев.</p>";
+    heroCatalogData = data;
+    renderHeroCatalog();
   } catch (error) {
     target.innerHTML = `<p class="hero-empty">❌ ${escapeHtml(error.message || "Ошибка загрузки каталога.")}</p>`;
   }
 }
+
+(function initHeroCatalogGrouping() {
+  const select = document.getElementById("heroCatalogGrouping");
+  if (select) select.addEventListener("change", renderHeroCatalog);
+})();
 
 (function initHeroCatalogButton() {
   const button = document.getElementById("heroCatalogOpen");

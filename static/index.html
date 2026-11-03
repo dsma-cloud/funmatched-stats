@@ -266,7 +266,13 @@ Funmatched Stats
 <section class="card hero-report" id="heroCatalogSection" hidden>
   <button type="button" class="report-close" data-close-report="heroCatalogSection" aria-label="Закрыть каталог">✕</button>
   <h2>📚 Каталог героев</h2>
-  <p class="report-description">Герои сгруппированы по теме. В карточке указаны тир, сложность и ссылка на героя.</p>
+  <p class="report-description">Выбери способ группировки. В карточке указаны тир, сложность и ссылка на героя.</p>
+  <label class="report-field" for="heroCatalogGrouping">Группировать:</label>
+  <select id="heroCatalogGrouping" class="report-input">
+    <option value="theme">По тематической группе</option>
+    <option value="tier">По тиру</option>
+    <option value="complexity">По сложности</option>
+  </select>
   <div id="heroCatalogResults" aria-live="polite"><p>Загрузка каталога…</p></div>
 </section>
 
