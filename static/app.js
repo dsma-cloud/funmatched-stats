@@ -658,8 +658,10 @@ function renderHeroCatalog() {
       <div class="hero-catalog-list">${items.sort((a, b) => String(a.name).localeCompare(String(b.name), "ru", { sensitivity: "base" })).map(hero => {
         const link = (() => { try { const url = new URL(hero.link, window.location.origin); return ["http:", "https:"].includes(url.protocol) ? url.href : ""; } catch (_) { return ""; } })();
         const title = link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(hero.name)}</a>` : `<strong>${escapeHtml(hero.name)}</strong>`;
+        const image = (() => { try { const url = new URL(hero.image, window.location.origin); return ["http:", "https:"].includes(url.protocol) ? url.href : ""; } catch (_) { return ""; } })();
+        const imageHtml = image ? `<img class="hero-catalog-thumb" src="${escapeHtml(image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="hero-catalog-thumb hero-catalog-thumb-empty" aria-hidden="true">?</div>`;
         const complexity = Math.max(0, Math.min(5, Number(hero.complexity) || 0));
-        return `<article class="hero-catalog-card"><div class="hero-catalog-info">${title}<div class="hero-catalog-meta">Тир: ${escapeHtml(hero.tier || "—")}</div><div class="hero-catalog-stars" aria-label="Сложность ${complexity} из 5">${"★".repeat(complexity)}${"☆".repeat(5-complexity)}</div></div></article>`;
+        return `<article class="hero-catalog-card">${imageHtml}<div class="hero-catalog-info">${title}<div class="hero-catalog-meta">Тир: ${escapeHtml(hero.tier || "—")}</div><div class="hero-catalog-stars" aria-label="Сложность ${complexity} из 5">${"★".repeat(complexity)}${"☆".repeat(5-complexity)}</div></div></article>`;
       }).join("")}</div>
     </details>`).join("") || "<p>В таблице Heroes пока нет героев.</p>";
 }
