@@ -1,3 +1,10 @@
+// HTML escaping helper used by the hero catalog and other UI sections.
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, ch => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+  }[ch]));
+}
+
 async function loadDashboard(){
 
 
@@ -636,10 +643,9 @@ async function loadHeroCatalog() {
       <details class="hero-catalog-theme">
         <summary>${escapeHtml(group.theme)} <span>(${group.heroes.length})</span></summary>
         <div class="hero-catalog-list">${group.heroes.map(hero => {
-          const image = safeUrl(hero.image);
           const link = safeUrl(hero.link);
           const title = link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(hero.name)}</a>` : `<strong>${escapeHtml(hero.name)}</strong>`;
-          return `<article class="hero-catalog-card">${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(hero.name)}" loading="lazy">` : ""}<div class="hero-catalog-info">${title}<div class="hero-catalog-meta">Тир: ${escapeHtml(hero.tier || "—")}</div><div class="hero-catalog-stars" aria-label="Сложность ${hero.complexity} из 5">${"★".repeat(hero.complexity)}${"☆".repeat(5-hero.complexity)}</div></div></article>`;
+          return `<article class="hero-catalog-card"><div class="hero-catalog-info">${title}<div class="hero-catalog-meta">Тир: ${escapeHtml(hero.tier || "—")}</div><div class="hero-catalog-stars" aria-label="Сложность ${hero.complexity} из 5">${"★".repeat(hero.complexity)}${"☆".repeat(5-hero.complexity)}</div></div></article>`;
         }).join("")}</div>
       </details>`).join("") || "<p>В таблице Heroes пока нет героев.</p>";
   } catch (error) {
