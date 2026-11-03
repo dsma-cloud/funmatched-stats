@@ -2,6 +2,7 @@ from flask import Flask, jsonify, send_from_directory, request
 
 
 from sheets import (
+    hero_catalog_report,
     dashboard_players,
     dashboard_heroes,
     dashboard_maps,
@@ -355,3 +356,12 @@ def period_summary_api():
     except Exception:
         app.logger.exception("Ошибка формирования комплексного отчёта за период")
         return jsonify({"error": "Не удалось загрузить итоги за период."}), 500
+
+
+@app.route("/api/hero_catalog")
+def hero_catalog_api():
+    try:
+        return jsonify(hero_catalog_report())
+    except Exception:
+        app.logger.exception("Ошибка формирования каталога героев")
+        return jsonify({"error": "Не удалось загрузить каталог героев."}), 500

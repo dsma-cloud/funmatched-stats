@@ -586,7 +586,7 @@ ${index + 1}. ${map.map}
     const option = event.target.closest("button[data-open-report]");
     if (!option) return;
     const targetId = option.dataset.openReport;
-    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection, #playerRating7DaysSection, #heroDevelopmentSection, #heroesNotInRatingSection, #matchesPeriodSection, #periodSummarySection").forEach(section => {
+    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection, #playerRating7DaysSection, #heroDevelopmentSection, #heroesNotInRatingSection, #matchesPeriodSection, #periodSummarySection, #heroCatalogSection").forEach(section => {
       section.hidden = section.id !== targetId;
     });
     menu.hidden = true;
@@ -620,6 +620,44 @@ ${index + 1}. ${map.map}
 
 
 
+
+async function loadHeroCatalog() {
+  const target = document.getElementById("heroCatalogResults");
+  if (!target) return;
+  target.innerHTML = "<p>Загрузка каталога…</p>";
+  try {
+    const response = await fetch("/api/hero_catalog");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Не удалось загрузить каталог.");
+    const safeUrl = value => {
+      try { const url = new URL(value, window.location.origin); return ["http:", "https:"].includes(url.protocol) ? url.href : ""; } catch (_) { return ""; }
+    };
+    target.innerHTML = (data.groups || []).map(group => `
+      <details class="hero-catalog-theme">
+        <summary>${escapeHtml(group.theme)} <span>(${group.heroes.length})</span></summary>
+        <div class="hero-catalog-list">${group.heroes.map(hero => {
+          const image = safeUrl(hero.image);
+          const link = safeUrl(hero.link);
+          const title = link ? `<a href="${escapeHtml(link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(hero.name)}</a>` : `<strong>${escapeHtml(hero.name)}</strong>`;
+          return `<article class="hero-catalog-card">${image ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(hero.name)}" loading="lazy">` : ""}<div class="hero-catalog-info">${title}<div class="hero-catalog-meta">Тир: ${escapeHtml(hero.tier || "—")}</div><div class="hero-catalog-stars" aria-label="Сложность ${hero.complexity} из 5">${"★".repeat(hero.complexity)}${"☆".repeat(5-hero.complexity)}</div></div></article>`;
+        }).join("")}</div>
+      </details>`).join("") || "<p>В таблице Heroes пока нет героев.</p>";
+  } catch (error) {
+    target.innerHTML = `<p class="hero-empty">❌ ${escapeHtml(error.message || "Ошибка загрузки каталога.")}</p>`;
+  }
+}
+
+(function initHeroCatalogButton() {
+  const button = document.getElementById("heroCatalogOpen");
+  if (!button) return;
+  button.addEventListener("click", () => {
+    document.querySelectorAll(".hero-report").forEach(section => { section.hidden = section.id !== "heroCatalogSection"; });
+    document.getElementById("reportsMenu").hidden = true;
+    document.getElementById("allRatings")?.setAttribute("aria-expanded", "false");
+    document.getElementById("heroCatalogSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    loadHeroCatalog();
+  });
+})();
 
 
 loadDashboard();

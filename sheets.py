@@ -635,6 +635,54 @@ def player_head_to_head_report(player1_name, player2_name):
 # =========================
 # Рейтинг игроков за последние 7 дней
 # =========================
+
+def hero_catalog_report():
+    """Каталог героев, сгруппированный по теме из листа Heroes."""
+    rows = get_sheet("Heroes").get_all_values()
+    if not rows:
+        return {"groups": []}
+
+    headers = [str(value).strip().casefold() for value in rows[0]]
+    def find_col(*names):
+        for name in names:
+            key = name.casefold()
+            if key in headers:
+                return headers.index(key)
+        return None
+
+    # Название героя исторически хранится во втором столбце; остальные поля ищем по заголовкам.
+    name_col = find_col("hero", "герой", "name", "название")
+    if name_col is None:
+        name_col = 1
+    theme_col = find_col("theme", "тема")
+    image_col = find_col("image", "картинка", "изображение")
+    tier_col = find_col("tier", "тир")
+    complexity_col = find_col("complexity", "сложность")
+    link_col = find_col("link", "ссылка", "url")
+
+    grouped = {}
+    for row in rows[1:]:
+        def cell(index):
+            return str(row[index]).strip() if index is not None and index < len(row) else ""
+        name = cell(name_col)
+        if not name:
+            continue
+        theme = cell(theme_col) or "Без темы"
+        raw_complexity = cell(complexity_col)
+        try:
+            complexity = max(0, min(5, int(float(raw_complexity.replace(",", ".")))))
+        except (ValueError, AttributeError):
+            complexity = 0
+        grouped.setdefault(theme, []).append({
+            "name": name, "image": cell(image_col), "tier": cell(tier_col),
+            "complexity": complexity, "link": cell(link_col)
+        })
+
+    return {"groups": [
+        {"theme": theme, "heroes": sorted(heroes, key=lambda item: item["name"].casefold())}
+        for theme, heroes in sorted(grouped.items(), key=lambda item: item[0].casefold())
+    ]}
+
 def player_rating_last_7_days():
     """Рейтинг по матчам за последние 7 календарных дней, включая сегодня."""
     today = date.today()
