@@ -633,10 +633,11 @@ let heroCatalogData = null;
 function renderHeroCatalog() {
   const target = document.getElementById("heroCatalogResults");
   const grouping = document.getElementById("heroCatalogGrouping")?.value || "theme";
+  const typeFilter = document.getElementById("heroCatalogType")?.value || "all";
   if (!target || !heroCatalogData) return;
   const heroes = (heroCatalogData.groups || []).flatMap(group =>
     (group.heroes || []).map(hero => ({ ...hero, theme: group.theme || "Без темы" }))
-  );
+  ).filter(hero => typeFilter === "all" || String(hero.type || "").trim().toLowerCase() === typeFilter.toLowerCase());
   const grouped = new Map();
   heroes.forEach(hero => {
     let key;
@@ -661,7 +662,7 @@ function renderHeroCatalog() {
         const image = (() => { try { const url = new URL(hero.image, window.location.origin); return ["http:", "https:"].includes(url.protocol) ? url.href : ""; } catch (_) { return ""; } })();
         const imageHtml = image ? `<img class="hero-catalog-thumb" src="${escapeHtml(image)}" alt="" loading="lazy" referrerpolicy="no-referrer">` : `<div class="hero-catalog-thumb hero-catalog-thumb-empty" aria-hidden="true">?</div>`;
         const complexity = Math.max(0, Math.min(5, Number(hero.complexity) || 0));
-        return `<article class="hero-catalog-card">${imageHtml}<div class="hero-catalog-info">${title}<div class="hero-catalog-meta">Тир: ${escapeHtml(hero.tier || "—")}</div><div class="hero-catalog-meta"><span>Сложность:</span> <span class="hero-catalog-stars" aria-label="${complexity} из 5">${"★".repeat(complexity)}${"☆".repeat(5-complexity)}</span></div></div></article>`;
+        return `<article class="hero-catalog-card">${imageHtml}<div class="hero-catalog-info">${title}<div class="hero-catalog-meta">Тир: ${escapeHtml(hero.tier || "—")}</div><div class="hero-catalog-meta"><span>Сложность:</span> <span class="hero-catalog-stars" aria-label="${complexity} из 5">${"⚙️".repeat(complexity)}${"⚙️".repeat(5-complexity).replace(/⚙️/g, "⚙︎")}</span></div></div></article>`;
       }).join("")}</div>
     </details>`).join("") || "<p>В таблице Heroes пока нет героев.</p>";
 }
@@ -682,9 +683,11 @@ async function loadHeroCatalog() {
   }
 }
 
-(function initHeroCatalogGrouping() {
-  const select = document.getElementById("heroCatalogGrouping");
-  if (select) select.addEventListener("change", renderHeroCatalog);
+(function initHeroCatalogControls() {
+  ["heroCatalogGrouping", "heroCatalogType"].forEach(id => {
+    const select = document.getElementById(id);
+    if (select) select.addEventListener("change", renderHeroCatalog);
+  });
 })();
 
 (function initHeroCatalogButton() {

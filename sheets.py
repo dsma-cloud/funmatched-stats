@@ -659,6 +659,7 @@ def hero_catalog_report():
     complexity_col = find_col("complexity", "сложность")
     link_col = find_col("link", "ссылка", "url")
     image_col = find_col("image", "изображение", "картинка", "image url")
+    type_col = find_col("type", "тип")
 
     grouped = {}
     for row in rows[1:]:
@@ -675,7 +676,8 @@ def hero_catalog_report():
             complexity = 0
         grouped.setdefault(theme, []).append({
             "name": name, "tier": cell(tier_col),
-            "complexity": complexity, "link": cell(link_col), "image": cell(image_col)
+            "complexity": complexity, "link": cell(link_col), "image": cell(image_col),
+            "type": cell(type_col)
         })
 
     return {"groups": [
