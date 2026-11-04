@@ -1065,3 +1065,72 @@ def period_summary_report(start_value, end_value):
     return {"from": start_day.isoformat(), "to": end_day.isoformat(), "total_matches": period_matches,
             "players": displayed_players, "leaders": leaders,
             "hero_changes": hero_changes, "near_rating": near_rating}
+
+# =========================
+# Голосование за участников контеста
+# =========================
+
+def _parse_contest_datetime(value):
+    raw = str(value or '').strip()
+    if not raw:
+        return None
+    # Таблица может содержать дату как 16.00 04.11.2026 или 16:00 04.11.2026.
+    normalized = raw.replace('.00 ', ':00 ').replace('.', ':', 1) if raw[:2].isdigit() and raw[2:4] == '.0' else raw
+    for fmt in ('%H:%M %d.%m.%Y', '%H.%M %d.%m.%Y', '%d.%m.%Y %H:%M', '%d.%m.%Y', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+        try:
+            return datetime.strptime(normalized, fmt)
+        except ValueError:
+            pass
+    # Google Sheets иногда возвращает дату в ISO-подобном виде.
+    try:
+        return datetime.fromisoformat(raw.replace('Z', '+00:00')).replace(tzinfo=None)
+    except ValueError:
+        raise ValueError(f'Не удалось распознать дату контеста: {raw}')
+
+
+def contest_voting_info():
+    rows = get_sheet('Contest').get_all_values()
+    if len(rows) < 2:
+        return {'title': 'Голосование', 'candidates': [], 'is_open': False, 'message': 'В листе Contest нет настроек контеста.'}
+    title = (rows[1][3] if len(rows[1]) > 3 else '').strip() or 'Голосование'
+    start = _parse_contest_datetime(rows[1][1] if len(rows[1]) > 1 else '')
+    end = _parse_contest_datetime(rows[1][2] if len(rows[1]) > 2 else '')
+    candidates = [str(row[0]).strip() for row in rows[1:] if row and str(row[0]).strip()]
+    now = datetime.now()
+    is_open = bool(start and end and start <= now <= end)
+    if not start or not end:
+        message = 'Не указаны даты начала или окончания голосования.'
+    elif now < start:
+        message = f'Голосование начнётся {start.strftime("%d.%m.%Y %H:%M")}.'
+    elif now > end:
+        message = 'Голосование завершено.'
+    else:
+        message = ''
+    return {'title': title, 'candidates': candidates, 'is_open': is_open, 'message': message,
+            'start': start.strftime('%d.%m.%Y %H:%M') if start else '',
+            'end': end.strftime('%d.%m.%Y %H:%M') if end else ''}
+
+
+def submit_contest_vote(candidates, vk_id, full_name, profile_url):
+    info = contest_voting_info()
+    if not info.get('is_open'):
+        raise ValueError(info.get('message') or 'Голосование сейчас закрыто.')
+    allowed = set(info.get('candidates', []))
+    selected = list(dict.fromkeys(str(item).strip() for item in candidates if str(item).strip()))
+    if not selected:
+        raise ValueError('Выберите хотя бы одного кандидата.')
+    invalid = [item for item in selected if item not in allowed]
+    if invalid:
+        raise ValueError('В списке есть неизвестный кандидат. Обновите страницу.')
+    try:
+        vote_sheet = get_sheet('Vote')
+    except gspread.WorksheetNotFound:
+        vote_sheet = spreadsheet.add_worksheet(title='Vote', rows=1000, cols=4)
+        vote_sheet.append_row(['Candidate', 'Voter', 'VK profile', 'VK ID'])
+    existing = vote_sheet.get_all_values()
+    # Идемпотентность по VK ID: один профиль может отправить только одну заявку.
+    if any(len(row) > 3 and str(row[3]).strip() == str(vk_id) for row in existing[1:]):
+        raise ValueError('Вы уже голосовали в этом контесте. Повторный голос не принимается.')
+    rows_to_add = [[candidate, full_name, profile_url, str(vk_id)] for candidate in selected]
+    vote_sheet.append_rows(rows_to_add, value_input_option='USER_ENTERED')
+    return {'success': True, 'count': len(rows_to_add), 'message': 'Ваш голос принят.'}
