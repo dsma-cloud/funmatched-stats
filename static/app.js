@@ -593,7 +593,7 @@ ${index + 1}. ${map.map}
     const option = event.target.closest("button[data-open-report]");
     if (!option) return;
     const targetId = option.dataset.openReport;
-    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection, #playerRating7DaysSection, #heroDevelopmentSection, #heroesNotInRatingSection, #matchesPeriodSection, #periodSummarySection, #heroCatalogSection").forEach(section => {
+    document.querySelectorAll("#heroReportSection, #playerReportSection, #heroHeadToHeadSection, #playerHeadToHeadSection, #playerRating7DaysSection, #heroDevelopmentSection, #heroesNotInRatingSection, #matchesPeriodSection, #periodSummarySection, #heroCatalogSection, #contestVoteSection").forEach(section => {
       section.hidden = section.id !== targetId;
     });
     menu.hidden = true;
@@ -1240,3 +1240,87 @@ async function loadPeriodSummary() {
 }
 
 document.addEventListener("DOMContentLoaded", initPeriodSummary);
+
+
+// =========================
+// Голосование за участников контеста
+// =========================
+(function initContestVoting() {
+  const openButton = document.getElementById("contestVoteOpen");
+  const section = document.getElementById("contestVoteSection");
+  const form = document.getElementById("contestVoteForm");
+  const status = document.getElementById("contestVoteStatus");
+  const candidatesBox = document.getElementById("contestVoteCandidates");
+  const message = document.getElementById("contestVoteMessage");
+  const title = document.getElementById("contestVoteTitle");
+  if (!openButton || !section || !form) return;
+
+  openButton.addEventListener("click", async () => {
+    document.querySelectorAll(".hero-report").forEach(item => { item.hidden = item !== section; });
+    const menu = document.getElementById("reportsMenu");
+    if (menu) menu.hidden = true;
+    section.hidden = false;
+    section.scrollIntoView({ behavior: "smooth", block: "start" });
+    status.textContent = "Загрузка голосования…";
+    candidatesBox.innerHTML = "";
+    message.textContent = "";
+    try {
+      const response = await fetch("/api/contest");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Не удалось загрузить голосование.");
+      title.textContent = data.title || "Голосование";
+      if (!data.active) {
+        status.textContent = data.reason || "Голосование сейчас недоступно.";
+        form.hidden = true;
+        return;
+      }
+      form.hidden = false;
+      status.textContent = "Выберите одного или нескольких кандидатов.";
+      candidatesBox.innerHTML = (data.candidates || []).map((candidate, index) =>
+        `<label class="contest-candidate"><span>${escapeHtml(candidate)}</span><input type="checkbox" name="contestCandidate" value="${escapeHtml(candidate)}"></label>`
+      ).join("") || "<p>Список кандидатов пуст.</p>";
+    } catch (error) {
+      status.textContent = error.message || "Ошибка загрузки голосования.";
+      form.hidden = true;
+    }
+  });
+
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    message.textContent = "";
+    const selected = [...form.querySelectorAll('input[name="contestCandidate"]:checked')].map(input => input.value);
+    if (!selected.length) { message.textContent = "Выберите хотя бы одного кандидата."; return; }
+    const bridge = window.vkBridge || window.vkBridgeInstance;
+    if (!bridge || typeof bridge.send !== "function") {
+      message.textContent = "Не удалось получить профиль VK. Откройте приложение внутри VK.";
+      return;
+    }
+    const submit = document.getElementById("contestVoteSubmit");
+    submit.disabled = true;
+    try {
+      const profile = await bridge.send("VKWebAppGetUserInfo");
+      if (!profile || !profile.id) throw new Error("VK не вернул данные профиля.");
+      const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim();
+      const payload = {
+        candidates: selected,
+        vk_id: String(profile.id),
+        full_name: fullName || `Пользователь VK ${profile.id}`,
+        profile_url: `https://vk.com/id${profile.id}`
+      };
+      const response = await fetch("/api/contest/vote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Не удалось отправить голос.");
+      message.textContent = `Голос принят! Вы выбрали кандидатов: ${result.count}.`;
+      form.querySelectorAll('input[type="checkbox"]').forEach(input => { input.checked = false; input.disabled = true; });
+      submit.hidden = true;
+    } catch (error) {
+      message.textContent = error.message || "Ошибка отправки голоса.";
+    } finally {
+      submit.disabled = false;
+    }
+  });
+})();

@@ -20,7 +20,9 @@ from sheets import (
     hero_development_report,
     heroes_not_in_rating_report,
     matches_period_report,
-    period_summary_report
+    period_summary_report,
+    contest_voting_info,
+    submit_contest_vote
 )
 
 
@@ -365,3 +367,33 @@ def hero_catalog_api():
     except Exception:
         app.logger.exception("Ошибка формирования каталога героев")
         return jsonify({"error": "Не удалось загрузить каталог героев."}), 500
+
+
+@app.route("/api/contest")
+def contest_api():
+    try:
+        return jsonify(contest_voting_info())
+    except Exception:
+        app.logger.exception("Ошибка загрузки данных контеста")
+        return jsonify({"error": "Не удалось загрузить контест."}), 500
+
+
+@app.route("/api/contest/vote", methods=["POST"])
+def contest_vote_api():
+    data = request.get_json(silent=True) or {}
+    vk_id = str(data.get("vk_id", "")).strip()
+    full_name = str(data.get("full_name", "")).strip()
+    profile_url = str(data.get("profile_url", "")).strip()
+    candidates = data.get("candidates", [])
+    if not vk_id.isdigit() or not full_name or not isinstance(candidates, list):
+        return jsonify({"error": "Не удалось определить профиль VK или список кандидатов."}), 400
+    if profile_url != f"https://vk.com/id{vk_id}":
+        return jsonify({"error": "Некорректная ссылка на профиль VK."}), 400
+    try:
+        result = submit_contest_vote(candidates, vk_id, full_name, profile_url)
+        return jsonify(result), 201
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception:
+        app.logger.exception("Ошибка сохранения голоса")
+        return jsonify({"error": "Не удалось сохранить голос."}), 500
