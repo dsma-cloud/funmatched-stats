@@ -1071,17 +1071,36 @@ def period_summary_report(start_value, end_value):
 # =========================
 
 def _parse_contest_datetime(value):
+    """Parse contest dates from Google Sheets, including 15.00 04.11.2026."""
+    import re
+
     raw = str(value or '').strip()
     if not raw:
         return None
-    # Таблица может содержать дату как 16.00 04.11.2026 или 16:00 04.11.2026.
-    normalized = raw.replace('.00 ', ':00 ').replace('.', ':', 1) if raw[:2].isdigit() and raw[2:4] == '.0' else raw
-    for fmt in ('%H:%M %d.%m.%Y', '%H.%M %d.%m.%Y', '%d.%m.%Y %H:%M', '%d.%m.%Y', '%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
+
+    # Sheets may return time with a dot separator (15.00) instead of a colon.
+    # Normalize only the time portion, preserving dots in the date.
+    normalized = raw
+    match = re.match(r'^(\d{1,2})[.:](\d{2})\s+(\d{1,2}\.\d{1,2}\.\d{4})$', raw)
+    if match:
+        hour, minute, date_part = match.groups()
+        normalized = f'{int(hour):02d}:{minute} {date_part}'
+
+    formats = (
+        '%H:%M %d.%m.%Y',
+        '%d.%m.%Y %H:%M',
+        '%d.%m.%Y',
+        '%Y-%m-%d %H:%M:%S',
+        '%Y-%m-%d %H:%M',
+        '%Y-%m-%d',
+    )
+    for fmt in formats:
         try:
             return datetime.strptime(normalized, fmt)
         except ValueError:
-            pass
-    # Google Sheets иногда возвращает дату в ISO-подобном виде.
+            continue
+
+    # Google Sheets may also return ISO timestamps, optionally with timezone.
     try:
         return datetime.fromisoformat(raw.replace('Z', '+00:00')).replace(tzinfo=None)
     except ValueError:
@@ -1096,7 +1115,10 @@ def contest_voting_info():
     start = _parse_contest_datetime(rows[1][1] if len(rows[1]) > 1 else '')
     end = _parse_contest_datetime(rows[1][2] if len(rows[1]) > 2 else '')
     candidates = [str(row[0]).strip() for row in rows[1:] if row and str(row[0]).strip()]
-    now = datetime.now()
+    # Даты контеста в таблице указаны по московскому времени.
+    # Сравниваем их с текущим временем Москвы, а не UTC-временем сервера Amvera.
+    from zoneinfo import ZoneInfo
+    now = datetime.now(ZoneInfo('Europe/Moscow')).replace(tzinfo=None)
     is_open = bool(start and end and start <= now <= end)
     if not start or not end:
         message = 'Не указаны даты начала или окончания голосования.'

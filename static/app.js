@@ -1269,7 +1269,7 @@ document.addEventListener("DOMContentLoaded", initPeriodSummary);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Не удалось загрузить голосование.");
       title.textContent = data.title || "Голосование";
-      if (!data.active) {
+      if (!data.is_open) {
         status.textContent = data.reason || "Голосование сейчас недоступно.";
         form.hidden = true;
         return;
