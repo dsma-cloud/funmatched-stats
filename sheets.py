@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import base64
 from datetime import date, datetime, timedelta
 import gspread
@@ -1150,8 +1151,24 @@ def submit_contest_vote(candidates, vk_id, full_name, profile_url):
         vote_sheet = spreadsheet.add_worksheet(title='Vote', rows=1000, cols=4)
         vote_sheet.append_row(['Candidate', 'Voter', 'VK profile', 'VK ID'])
     existing = vote_sheet.get_all_values()
-    # Идемпотентность по VK ID: один профиль может отправить только одну заявку.
-    if any(len(row) > 3 and str(row[3]).strip() == str(vk_id) for row in existing[1:]):
+
+    # На старых версиях приложения VK ID мог не записываться в столбец D.
+    # Поэтому сверяем одновременно ID из D и ID, извлечённый из ссылки профиля в C.
+    def normalize_vk_id(value):
+        value = str(value or '').strip()
+        match = re.search(r'(?:id)?(\d+)', value, re.IGNORECASE)
+        return match.group(1) if match else ''
+
+    submitted_id = normalize_vk_id(vk_id)
+    already_voted = False
+    for row in existing[1:]:
+        stored_id = normalize_vk_id(row[3]) if len(row) > 3 else ''
+        stored_profile_id = normalize_vk_id(row[2]) if len(row) > 2 else ''
+        if submitted_id and submitted_id in (stored_id, stored_profile_id):
+            already_voted = True
+            break
+
+    if already_voted:
         raise ValueError('Вы уже голосовали в этом контесте. Повторный голос не принимается.')
     rows_to_add = [[candidate, full_name, profile_url, str(vk_id)] for candidate in selected]
     vote_sheet.append_rows(rows_to_add, value_input_option='USER_ENTERED')
