@@ -232,6 +232,8 @@ def create_match():
     data = request.get_json(silent=True) or {}
     required = ("player1", "hero1", "player2", "hero2", "map", "winner")
     match = {key: str(data.get(key, "")).strip() for key in required}
+    # Ссылка на профиль автора добавления матча (передаётся VK Mini App).
+    match["added_by"] = str(data.get("added_by", "")).strip()
 
     missing = [key for key, value in match.items() if not value]
     if missing:

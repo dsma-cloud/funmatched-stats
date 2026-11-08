@@ -541,6 +541,17 @@ ${index + 1}. ${map.map}
     event.preventDefault();
     if (!form.reportValidity()) return;
     const data = Object.fromEntries(new FormData(form).entries());
+    // Получаем профиль автора через VK Bridge. Если Bridge недоступен,
+    // добавление матча не блокируем — поле Added By останется пустым.
+    try {
+      const bridge = window.vkBridge || window.vkBridgeInstance;
+      if (bridge && typeof bridge.send === "function") {
+        const profile = await bridge.send("VKWebAppGetUserInfo");
+        if (profile && profile.id) data.added_by = `https://vk.com/id${profile.id}`;
+      }
+    } catch (profileError) {
+      console.warn("Не удалось получить профиль автора матча:", profileError);
+    }
     saveButton.disabled = true;
     saveButton.textContent = "Сохраняем…";
     message.textContent = "Отправляем матч в Google Sheets…";

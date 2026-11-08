@@ -179,6 +179,7 @@ def add_match(match):
             "",   # Duration
 
             ""    # Notes
+            ,match.get("added_by", "")  # Added By: ссылка на профиль VK
         ]
     )
     
