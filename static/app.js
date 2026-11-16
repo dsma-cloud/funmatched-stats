@@ -787,7 +787,11 @@ loadDashboard();
         byOpponent.get(opponent).push(match);
       });
       const opponentGroups = [...byOpponent.entries()]
-        .sort((a, b) => a[0].localeCompare(b[0], "ru"))
+        .sort((a, b) => {
+          const gamesA = Number(a[1][0]?.opponent_games ?? a[1].length);
+          const gamesB = Number(b[1][0]?.opponent_games ?? b[1].length);
+          return gamesB - gamesA || a[0].localeCompare(b[0], "ru");
+        })
         .map(([opponent, matches]) => {
           const winrate = matches[0]?.opponent_winrate;
           const winrateLabel = winrate === null || winrate === undefined
