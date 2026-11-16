@@ -799,7 +799,28 @@ loadDashboard();
             <div class="hero-match-scroll">${matches.map(renderMatch).join("")}</div>
           </details>`;
         }).join("");
-      // В карточке героя показываем 3 матча, остальные доступны прокруткой.
+      // Формируем содержимое карточки после построения всех групп.
+      const complexityValue = Math.max(0, Math.min(5, Number.parseInt(report.complexity, 10) || 0));
+      const complexityGears = complexityValue
+        ? `⚙️`.repeat(complexityValue) + ` <span class="hero-complexity-count">${complexityValue}/5</span>`
+        : "Не указана";
+      results.innerHTML = `
+        <h3>Статистика: ${escapeHtml(report.hero || hero)}</h3>
+        <div class="hero-report-meta">
+          <span><strong>Тир:</strong> ${escapeHtml(report.tier || "Не указан")}</span>
+          <span><strong>Сложность:</strong> ${complexityGears}</span>
+        </div>
+        <div class="hero-report-stats">
+          <div class="hero-report-stat"><span>Всего матчей</span><strong>${stats.games ?? 0}</strong></div>
+          <div class="hero-report-stat"><span>Победы</span><strong>${stats.wins ?? 0}</strong></div>
+          <div class="hero-report-stat"><span>Поражения</span><strong>${stats.losses ?? 0}</strong></div>
+          <div class="hero-report-stat"><span>Винрейт</span><strong>${String(stats.winrate ?? 0).replace(".", ",")}%</strong></div>
+        </div>
+        <h3>Матчи по героям противника</h3>
+        ${opponentGroups || '<p class="hero-empty">Матчей не найдено.</p>'}
+      `;
+
+      // В каждой группе сразу видны первые три матча, остальные доступны прокруткой.
       results.querySelectorAll(".hero-match-scroll").forEach(container => {
         const rows = container.querySelectorAll(".hero-match-row");
         if (rows.length > 3) {
