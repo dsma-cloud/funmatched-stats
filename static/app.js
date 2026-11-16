@@ -902,7 +902,45 @@ loadDashboard();
       const report = await response.json();
       if (!response.ok) throw new Error(report.error || "Ошибка загрузки отчёта");
       const stats = report.stats;
-      const group = (title, count, list, icon) => `<section class="hero-match-group"><h3>${icon} ${title}<span>${count}</span></h3>${list.length ? `<div class="player-match-scroll">${list.map(renderMatch).join("")}</div>` : '<p class="hero-empty">Матчей в этой группе пока нет.</p>'}</section>`;
+      // Объединяем победы, поражения и матчи с неопределённым результатом,
+      // затем группируем их по герою противника относительно выбранного игрока.
+      const allMatches = [
+        ...(report.wins || []),
+        ...(report.losses || []),
+        ...(report.unresolved || [])
+      ];
+      const byOpponentHero = new Map();
+      allMatches.forEach(match => {
+        const opponentHero = (match.opponent_hero || "Неизвестный герой").trim() || "Неизвестный герой";
+        if (!byOpponentHero.has(opponentHero)) byOpponentHero.set(opponentHero, []);
+        byOpponentHero.get(opponentHero).push(match);
+      });
+      const opponentGroups = [...byOpponentHero.entries()]
+        .map(([opponentHero, matches]) => {
+          let wins = 0;
+          let decided = 0;
+          matches.forEach(match => {
+            const winner = String(match.winner || "").trim().toLocaleLowerCase("ru");
+            const player1 = String(match.player1 || "").trim().toLocaleLowerCase("ru");
+            const player2 = String(match.player2 || "").trim().toLocaleLowerCase("ru");
+            let winningPlayer = "";
+            if (["player 1", "player1", "1", player1].includes(winner) && winner) winningPlayer = player1;
+            else if (["player 2", "player2", "2", player2].includes(winner) && winner) winningPlayer = player2;
+            if (winningPlayer) {
+              decided += 1;
+              if (winningPlayer === String(report.player || player).trim().toLocaleLowerCase("ru")) wins += 1;
+            }
+          });
+          return { opponentHero, matches, games: matches.length, winrate: decided ? wins / decided * 100 : null };
+        })
+        .sort((a, b) => b.games - a.games || a.opponentHero.localeCompare(b.opponentHero, "ru"));
+      const opponentGroupsHtml = opponentGroups.map(group => {
+        const winrateLabel = group.winrate === null ? "винрейт: —" : `винрейт: ${group.winrate.toFixed(1).replace(".", ",")}%`;
+        return `<details class="hero-opponent-group">
+          <summary><span>${escapeHtml(group.opponentHero)} — матчей: ${group.games} — ${winrateLabel}</span></summary>
+          <div class="player-match-scroll">${group.matches.map(renderMatch).join("")}</div>
+        </details>`;
+      }).join("");
       const favoriteHero = report.favorite_hero ? `${escapeHtml(report.favorite_hero.name)} — ${report.favorite_hero.games} игр` : "Нет данных";
       const favoriteMap = report.favorite_map ? `${escapeHtml(report.favorite_map.name)} — ${report.favorite_map.games} игр` : "Нет данных";
       results.innerHTML = `
@@ -915,11 +953,10 @@ loadDashboard();
           <div class="hero-report-stat"><span>Чаще всего играл на герое</span><strong>${favoriteHero}</strong></div>
           <div class="hero-report-stat"><span>Чаще всего играл на поле</span><strong>${favoriteMap}</strong></div>
         </div>
-        ${group("Победные игры", stats.wins, report.wins, "🏆")}
-        ${group("Проигрыши", stats.losses, report.losses, "❌")}
-        ${stats.unresolved ? group("Не удалось определить результат", stats.unresolved, report.unresolved, "❔") : ""}
+        <h3>Матчи по героям противника</h3>
+        ${opponentGroupsHtml || '<p class="hero-empty">Матчей не найдено.</p>'}
       `;
-      // В списках побед и поражений показываем 3 матча, остальные доступны через прокрутку.
+      // В каждой группе сразу видны первые три матча, остальные доступны через прокрутку.
       results.querySelectorAll(".player-match-scroll").forEach(container => {
         const rows = container.querySelectorAll(".hero-match-row");
         if (rows.length > 3) {
