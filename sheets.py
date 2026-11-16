@@ -396,6 +396,8 @@ def hero_match_report(hero_name):
     # чтобы не зависеть от их положения в таблице.
     hero_tier = ""
     hero_complexity = ""
+    hero_image = ""
+    hero_link = ""
     try:
         hero_rows = get_sheet("Heroes").get_all_values()
         if hero_rows:
@@ -403,12 +405,18 @@ def hero_match_report(hero_name):
             name_idx = headers.index("hero name") if "hero name" in headers else 1
             tier_idx = headers.index("tier") if "tier" in headers else None
             complexity_idx = headers.index("complexity") if "complexity" in headers else (headers.index("com") if "com" in headers else None)
+            image_idx = headers.index("image") if "image" in headers else None
+            link_idx = headers.index("link") if "link" in headers else None
             for hero_row in hero_rows[1:]:
                 if name_idx < len(hero_row) and hero_row[name_idx].strip().casefold() == hero_name.casefold():
                     if tier_idx is not None and tier_idx < len(hero_row):
                         hero_tier = hero_row[tier_idx].strip()
                     if complexity_idx is not None and complexity_idx < len(hero_row):
                         hero_complexity = hero_row[complexity_idx].strip()
+                    if image_idx is not None and image_idx < len(hero_row):
+                        hero_image = hero_row[image_idx].strip()
+                    if link_idx is not None and link_idx < len(hero_row):
+                        hero_link = hero_row[link_idx].strip()
                     break
     except Exception:
         # Отчёт по матчам должен продолжать работать, даже если справочник
@@ -475,6 +483,8 @@ def hero_match_report(hero_name):
         "hero": hero_name,
         "tier": hero_tier,
         "complexity": hero_complexity,
+        "image": hero_image,
+        "link": hero_link,
         "stats": {
             "games": games, "wins": len(wins), "losses": len(losses),
             "unresolved": len(unresolved),
