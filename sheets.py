@@ -392,8 +392,32 @@ def hero_match_report(hero_name):
     if not hero_name:
         return {"hero": "", "stats": {"games": 0, "wins": 0, "losses": 0, "winrate": 0}, "wins": [], "losses": [], "unresolved": []}
 
+    # Метаданные героя берём из справочника Heroes по заголовкам столбцов,
+    # чтобы не зависеть от их положения в таблице.
+    hero_tier = ""
+    hero_complexity = ""
+    try:
+        hero_rows = get_sheet("Heroes").get_all_values()
+        if hero_rows:
+            headers = [str(value).strip().casefold() for value in hero_rows[0]]
+            name_idx = headers.index("hero name") if "hero name" in headers else 1
+            tier_idx = headers.index("tier") if "tier" in headers else None
+            complexity_idx = headers.index("complexity") if "complexity" in headers else (headers.index("com") if "com" in headers else None)
+            for hero_row in hero_rows[1:]:
+                if name_idx < len(hero_row) and hero_row[name_idx].strip().casefold() == hero_name.casefold():
+                    if tier_idx is not None and tier_idx < len(hero_row):
+                        hero_tier = hero_row[tier_idx].strip()
+                    if complexity_idx is not None and complexity_idx < len(hero_row):
+                        hero_complexity = hero_row[complexity_idx].strip()
+                    break
+    except Exception:
+        # Отчёт по матчам должен продолжать работать, даже если справочник
+        # временно недоступен.
+        pass
+
     rows = get_sheet("Matches").get_all_values()
     wins, losses, unresolved = [], [], []
+    opponent_stats = {}
     target = hero_name.casefold()
 
     # Matches columns: ID, Date, Player1, Hero1, Player2, Hero2, Map, Winner, Duration, Notes
@@ -413,6 +437,15 @@ def hero_match_report(hero_name):
         elif winner_text in {"player 2", "player2", "2", player2_text} and winner_text:
             won_side = 2
 
+        opponent_hero = (hero2 if side == 1 else hero1).strip() or "Неизвестный герой"
+        opponent_stat = opponent_stats.setdefault(opponent_hero, {"games": 0, "wins": 0, "losses": 0})
+        opponent_stat["games"] += 1
+        if won_side:
+            if won_side == side:
+                opponent_stat["wins"] += 1
+            else:
+                opponent_stat["losses"] += 1
+
         item = {
             "id": match_id, "date": date,
             "player1": player1, "hero1": hero1,
@@ -420,7 +453,7 @@ def hero_match_report(hero_name):
             "map": map_name, "winner": winner,
             "hero_player": player1 if side == 1 else player2,
             "opponent_player": player2 if side == 1 else player1,
-            "opponent_hero": hero2 if side == 1 else hero1,
+            "opponent_hero": opponent_hero,
         }
         if not won_side:
             unresolved.append(item)
@@ -431,8 +464,17 @@ def hero_match_report(hero_name):
 
     games = len(wins) + len(losses) + len(unresolved)
     decided = len(wins) + len(losses)
+    for match_list in (wins, losses, unresolved):
+        for item in match_list:
+            opponent_stat = opponent_stats[item["opponent_hero"]]
+            opponent_decided = opponent_stat["wins"] + opponent_stat["losses"]
+            item["opponent_games"] = opponent_stat["games"]
+            item["opponent_wins"] = opponent_stat["wins"]
+            item["opponent_winrate"] = round(opponent_stat["wins"] / opponent_decided * 100, 1) if opponent_decided else None
     return {
         "hero": hero_name,
+        "tier": hero_tier,
+        "complexity": hero_complexity,
         "stats": {
             "games": games, "wins": len(wins), "losses": len(losses),
             "unresolved": len(unresolved),
