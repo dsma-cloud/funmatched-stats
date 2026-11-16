@@ -774,43 +774,31 @@ loadDashboard();
       const report = await response.json();
       if (!response.ok) throw new Error(report.error || "Ошибка загрузки отчёта");
       const stats = report.stats;
-      // Внутри побед/поражений/неопределённых результатов группируем матчи
-      // по герою соперника. Группы свёрнуты, чтобы длинные списки были компактными.
-      const group = (title, count, list, icon) => {
-        const byOpponent = new Map();
-        (list || []).forEach(match => {
-          const opponent = (match.opponent_hero || "Неизвестный герой").trim() || "Неизвестный герой";
-          if (!byOpponent.has(opponent)) byOpponent.set(opponent, []);
-          byOpponent.get(opponent).push(match);
-        });
-        const opponentGroups = [...byOpponent.entries()]
-          .sort((a, b) => a[0].localeCompare(b[0], "ru"))
-          .map(([opponent, matches]) => {
-            const winrate = matches[0]?.opponent_winrate;
-            const winrateLabel = winrate === null || winrate === undefined
-              ? "Винрейт: —"
-              : `Винрейт выбранного героя: ${String(winrate).replace(".", ",")}%`;
-            return `<details class="hero-opponent-group">
-              <summary><span>⚔️ ${escapeHtml(opponent)}</span><span>${matches[0]?.opponent_games ?? matches.length} игр · ${winrateLabel}</span></summary>
-              <div class="hero-match-scroll">${matches.map(renderMatch).join("")}</div>
-            </details>`;
-          }).join("");
-        return `<section class="hero-match-group"><h3>${icon} ${title}<span>${count}</span></h3>${list.length ? opponentGroups : '<p class="hero-empty">Матчей в этой группе пока нет.</p>'}</section>`;
-      };
-      results.innerHTML = `
-        <h3>Статистика: ${escapeHtml(report.hero)}</h3>
-        <div class="hero-report-stats">
-          <div class="hero-report-stat"><span>Всего матчей</span><strong>${stats.games}</strong></div>
-          <div class="hero-report-stat"><span>Победы</span><strong>${stats.wins}</strong></div>
-          <div class="hero-report-stat"><span>Поражения</span><strong>${stats.losses}</strong></div>
-          <div class="hero-report-stat"><span>Win Rate</span><strong>${String(stats.winrate).replace(".", ",")}%</strong></div>
-          <div class="hero-report-stat"><span>Тир</span><strong>${escapeHtml(report.tier || "—")}</strong></div>
-          <div class="hero-report-stat"><span>Сложность</span><strong>${(() => { const n = Math.max(0, Math.min(5, parseInt(report.complexity, 10) || 0)); return n ? "⚙️".repeat(n) : "—"; })()}</strong></div>
-        </div>
-        ${group("Победы героя", stats.wins, report.wins, "🏆")}
-        ${group("Поражения героя", stats.losses, report.losses, "❌")}
-        ${stats.unresolved ? group("Не удалось определить результат", stats.unresolved, report.unresolved, "❔") : ""}
-      `;
+      // Все матчи объединены в один список и сгруппированы по герою противника.
+      const allMatches = [
+        ...(report.wins || []),
+        ...(report.losses || []),
+        ...(report.unresolved || [])
+      ];
+      const byOpponent = new Map();
+      allMatches.forEach(match => {
+        const opponent = (match.opponent_hero || "Неизвестный герой").trim() || "Неизвестный герой";
+        if (!byOpponent.has(opponent)) byOpponent.set(opponent, []);
+        byOpponent.get(opponent).push(match);
+      });
+      const opponentGroups = [...byOpponent.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0], "ru"))
+        .map(([opponent, matches]) => {
+          const winrate = matches[0]?.opponent_winrate;
+          const winrateLabel = winrate === null || winrate === undefined
+            ? "винрейт: —"
+            : `винрейт: ${String(winrate).replace(".", ",")}%`;
+          const games = matches[0]?.opponent_games ?? matches.length;
+          return `<details class="hero-opponent-group">
+            <summary><span>${escapeHtml(opponent)} — матчей: ${games} — ${winrateLabel}</span></summary>
+            <div class="hero-match-scroll">${matches.map(renderMatch).join("")}</div>
+          </details>`;
+        }).join("");
       // В карточке героя показываем 3 матча, остальные доступны прокруткой.
       results.querySelectorAll(".hero-match-scroll").forEach(container => {
         const rows = container.querySelectorAll(".hero-match-row");
