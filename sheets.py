@@ -2,6 +2,9 @@ import os
 import json
 import re
 import base64
+import copy
+import threading
+import time
 from datetime import date, datetime, timedelta
 import gspread
 
@@ -44,12 +47,87 @@ spreadsheet = client.open_by_key(
 
 
 # =========================
-# Получение листа
+# Кэш листов и чтения Google Sheets
 # =========================
 
-def get_sheet(name):
+# Кэшируем сами объекты листов, чтобы gspread не запрашивал метаданные
+# всей таблицы при каждом вызове get_sheet().
+_sheet_objects = {}
+_sheet_objects_lock = threading.RLock()
 
-    return spreadsheet.worksheet(name)
+# Кэш чтения диапазонов и get_all_values на 30 секунд.
+# Это существенно снижает число обращений к Sheets API при загрузке
+# главной панели, поиске и открытии нескольких отчётов подряд.
+_READ_CACHE_TTL = 30
+_read_cache = {}
+_read_cache_lock = threading.RLock()
+
+
+class CachedWorksheet:
+    """Лёгкая обёртка над gspread Worksheet с кэшированием чтения."""
+
+    def __init__(self, worksheet, title):
+        self._worksheet = worksheet
+        self._title = title
+
+    def __getattr__(self, name):
+        attr = getattr(self._worksheet, name)
+
+        if name in ("get_all_values", "get"):
+            def cached_read(*args, **kwargs):
+                # Аргументы запроса входят в ключ, чтобы разные диапазоны
+                # не смешивались между собой.
+                key = (self._title, name, repr(args), repr(sorted(kwargs.items())))
+                now = time.monotonic()
+
+                with _read_cache_lock:
+                    cached = _read_cache.get(key)
+                    if cached and now - cached[0] < _READ_CACHE_TTL:
+                        return copy.deepcopy(cached[1])
+
+                # При временном превышении квоты делаем несколько попыток
+                # с короткой экспоненциальной задержкой.
+                last_error = None
+                for attempt in range(3):
+                    try:
+                        value = attr(*args, **kwargs)
+                        with _read_cache_lock:
+                            _read_cache[key] = (time.monotonic(), copy.deepcopy(value))
+                        return value
+                    except Exception as exc:
+                        last_error = exc
+                        message = str(exc)
+                        if "429" not in message and "Quota exceeded" not in message:
+                            raise
+                        if attempt < 2:
+                            time.sleep(1.5 * (2 ** attempt))
+                raise last_error
+
+            return cached_read
+
+        if name in ("append_row", "append_rows", "update", "update_cell",
+                    "batch_update", "clear", "delete_rows", "insert_row",
+                    "insert_rows"):
+            def write_and_invalidate(*args, **kwargs):
+                result = attr(*args, **kwargs)
+                with _read_cache_lock:
+                    # Любая запись очищает кэш чтения: новые матчи и голоса
+                    # становятся видны следующим запросам сразу.
+                    _read_cache.clear()
+                return result
+
+            return write_and_invalidate
+
+        return attr
+
+
+def get_sheet(name):
+    with _sheet_objects_lock:
+        if name not in _sheet_objects:
+            _sheet_objects[name] = CachedWorksheet(
+                spreadsheet.worksheet(name), name
+            )
+        return _sheet_objects[name]
 
 
 
@@ -358,16 +436,8 @@ def dashboard_last_match():
 
 def dashboard_stats():
 
-    sheet = client.open(
-        "Unmatched Stats"
-    ).worksheet(
-        "Dashboard"
-    )
-
-
-    rows = sheet.get(
-        "U4:V7"
-    )
+    sheet = get_sheet("Dashboard")
+    rows = sheet.get("U4:V7")
 
 
     return {
