@@ -1299,3 +1299,85 @@ def submit_contest_vote(candidates, vk_id, full_name, profile_url):
     rows_to_add = [[candidate, full_name, profile_url, str(vk_id)] for candidate in selected]
     vote_sheet.append_rows(rows_to_add, value_input_option='USER_ENTERED')
     return {'success': True, 'count': len(rows_to_add), 'message': 'Ваш голос принят.'}
+
+
+# =========================
+# Подача работ на контест
+# =========================
+
+def _vk_id_from_profile(value):
+    value = str(value or '').strip()
+    match = re.search(r'(?:vk\.com/)?(?:id)?(\d+)', value, re.IGNORECASE)
+    return match.group(1) if match else ''
+
+def contest_submission_info(vk_id=''):
+    sheet = get_sheet('ContPriem')
+    rows = sheet.get_all_values()
+    # H2/I2 содержат даты приёма работ; они могут находиться в строке 2
+    # одновременно с первой заявкой в колонках A:E.
+    date_row = rows[1] if len(rows) > 1 else []
+    start = _parse_contest_datetime(date_row[7] if len(date_row) > 7 else '')
+    end = _parse_contest_datetime(date_row[8] if len(date_row) > 8 else '')
+    from zoneinfo import ZoneInfo
+    now = datetime.now(ZoneInfo('Europe/Moscow')).replace(tzinfo=None)
+    is_open = bool(start and end and start <= now <= end)
+    reason = ''
+    if not start or not end:
+        reason = 'Не указаны даты начала или окончания приёма работ.'
+    elif now < start:
+        reason = f'Приём работ начнётся {start.strftime("%d.%m.%Y %H:%M")} (МСК).'
+    elif now > end:
+        reason = 'Приём работ завершён.'
+
+    existing = None
+    normalized_id = str(vk_id or '').strip()
+    if normalized_id.isdigit():
+        for index, row in enumerate(rows[1:], start=2):
+            row = row + [''] * max(0, 5 - len(row))
+            if _vk_id_from_profile(row[3]) == normalized_id:
+                existing = {'row': index, 'name': row[0], 'link': row[1], 'test': row[2]}
+                break
+    return {
+        'is_open': is_open, 'reason': reason,
+        'start': start.strftime('%d.%m.%Y %H:%M') if start else '',
+        'end': end.strftime('%d.%m.%Y %H:%M') if end else '',
+        'existing': existing, 'is_update': bool(existing)
+    }
+
+def submit_contest_work(hero_name, deck_link, test_results, vk_id, full_name, profile_url):
+    info = contest_submission_info(vk_id)
+    if not info.get('is_open'):
+        raise ValueError(info.get('reason') or 'Приём работ сейчас закрыт.')
+    hero_name = str(hero_name or '').strip()
+    deck_link = str(deck_link or '').strip()
+    test_results = str(test_results or '').strip()
+    vk_id = str(vk_id or '').strip()
+    full_name = str(full_name or '').strip()
+    profile_url = str(profile_url or '').strip()
+    if not hero_name or not deck_link or not test_results:
+        raise ValueError('Заполните все поля заявки.')
+    if not vk_id.isdigit() or not full_name or profile_url != f'https://vk.com/id{vk_id}':
+        raise ValueError('Не удалось подтвердить профиль VK. Откройте приложение внутри VK.')
+    if not re.match(r'^https?://', deck_link, re.IGNORECASE):
+        raise ValueError('Ссылка на раскладку должна начинаться с http:// или https://.')
+
+    sheet = get_sheet('ContPriem')
+    rows = sheet.get_all_values()
+    target_row = None
+    for index, row in enumerate(rows[1:], start=2):
+        author = row[3] if len(row) > 3 else ''
+        if _vk_id_from_profile(author) == vk_id:
+            target_row = index
+            break
+    if target_row is None:
+        # Первая свободная строка в колонках A:E; H2/I2 не затрагиваем.
+        for index in range(2, max(2, len(rows) + 1)):
+            row = rows[index - 1] if index - 1 < len(rows) else []
+            cells = (row + [''] * 5)[:5]
+            if not any(str(value).strip() for value in cells):
+                target_row = index
+                break
+        if target_row is None:
+            target_row = max(2, len(rows) + 1)
+    sheet.update(f'A{target_row}:E{target_row}', [[hero_name, deck_link, test_results, profile_url, full_name]], value_input_option='USER_ENTERED')
+    return {'success': True, 'updated': bool(info.get('existing')), 'message': 'Заявка обновлена.' if info.get('existing') else 'Заявка успешно подана.'}

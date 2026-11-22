@@ -1350,12 +1350,13 @@ document.addEventListener("DOMContentLoaded", initPeriodSummary);
     trigger.setAttribute("aria-expanded", String(!menu.hidden));
   });
 
-  submissionButton?.addEventListener("click", () => {
+  submissionButton?.addEventListener("click", async () => {
     document.querySelectorAll(".hero-report").forEach(item => { item.hidden = item !== submissionSection; });
     submissionSection.hidden = false;
     menu.hidden = true;
     trigger.setAttribute("aria-expanded", "false");
     submissionSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    await loadContestSubmissionForm();
   });
 
   document.addEventListener("click", event => {
@@ -1366,6 +1367,76 @@ document.addEventListener("DOMContentLoaded", initPeriodSummary);
   });
 })();
 
+
+// =========================
+// Подача работ на контест
+// =========================
+async function loadContestSubmissionForm() {
+  const status = document.getElementById("contestSubmissionStatus");
+  const form = document.getElementById("contestSubmissionForm");
+  const message = document.getElementById("contestSubmissionMessage");
+  if (!status || !form) return;
+  status.textContent = "Проверяем период приёма работ…";
+  message.textContent = "";
+  form.hidden = true;
+  try {
+    const bridge = window.vkBridge || window.vkBridgeInstance;
+    if (!bridge || typeof bridge.send !== "function") throw new Error("Откройте приложение внутри VK, чтобы определить ваш профиль.");
+    const profile = await bridge.send("VKWebAppGetUserInfo");
+    if (!profile || !profile.id) throw new Error("VK не вернул данные профиля.");
+    const response = await fetch(`/api/contest/submission?vk_id=${encodeURIComponent(profile.id)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Не удалось загрузить форму подачи работ.");
+    if (!data.is_open) {
+      status.textContent = data.reason || "Приём работ сейчас недоступен.";
+      return;
+    }
+    status.textContent = `Приём работ открыт: ${data.start} — ${data.end} (МСК). ${data.is_update ? "Вы уже подавали заявку — можно внести изменения." : "Вы можете подать одну заявку."}`;
+    document.getElementById("contestHeroName").value = data.existing?.name || "";
+    document.getElementById("contestDeckLink").value = data.existing?.link || "";
+    document.getElementById("contestTestResults").value = data.existing?.test || "";
+    document.getElementById("contestSubmissionSubmit").textContent = data.is_update ? "Сохранить изменения" : "Подать заявку";
+    form.dataset.vkId = String(profile.id);
+    form.dataset.fullName = [profile.first_name, profile.last_name].filter(Boolean).join(" ").trim() || `Пользователь VK ${profile.id}`;
+    form.hidden = false;
+  } catch (error) {
+    status.textContent = error.message || "Ошибка загрузки формы подачи работ.";
+  }
+}
+
+(function initContestSubmissionForm() {
+  const form = document.getElementById("contestSubmissionForm");
+  const message = document.getElementById("contestSubmissionMessage");
+  if (!form) return;
+  form.addEventListener("submit", async event => {
+    event.preventDefault();
+    const submit = document.getElementById("contestSubmissionSubmit");
+    const vkId = form.dataset.vkId || "";
+    if (!vkId) { message.textContent = "Не удалось определить профиль VK. Закройте и снова откройте форму."; return; }
+    submit.disabled = true;
+    message.textContent = "Отправляем заявку…";
+    try {
+      const response = await fetch("/api/contest/submission", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          hero_name: document.getElementById("contestHeroName").value,
+          deck_link: document.getElementById("contestDeckLink").value,
+          test_results: document.getElementById("contestTestResults").value,
+          vk_id: vkId, full_name: form.dataset.fullName || `Пользователь VK ${vkId}`,
+          profile_url: `https://vk.com/id${vkId}`
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "Не удалось сохранить заявку.");
+      message.textContent = result.message || "Заявка сохранена.";
+      submit.textContent = "Сохранить изменения";
+    } catch (error) {
+      message.textContent = error.message || "Ошибка отправки заявки.";
+    } finally {
+      submit.disabled = false;
+    }
+  });
+})();
 
 // =========================
 // Голосование за участников контеста

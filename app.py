@@ -22,7 +22,9 @@ from sheets import (
     matches_period_report,
     period_summary_report,
     contest_voting_info,
-    submit_contest_vote
+    submit_contest_vote,
+    contest_submission_info,
+    submit_contest_work
 )
 
 
@@ -399,3 +401,30 @@ def contest_vote_api():
     except Exception:
         app.logger.exception("Ошибка сохранения голоса")
         return jsonify({"error": "Не удалось сохранить голос."}), 500
+
+
+@app.route("/api/contest/submission", methods=["GET"])
+def contest_submission_info_api():
+    vk_id = (request.args.get("vk_id") or "").strip()
+    try:
+        return jsonify(contest_submission_info(vk_id))
+    except Exception:
+        app.logger.exception("Ошибка загрузки формы подачи работ")
+        return jsonify({"error": "Не удалось загрузить форму подачи работ."}), 500
+
+
+@app.route("/api/contest/submission", methods=["POST"])
+def contest_submission_api():
+    data = request.get_json(silent=True) or {}
+    try:
+        result = submit_contest_work(
+            data.get("hero_name"), data.get("deck_link"), data.get("test_results"),
+            str(data.get("vk_id", "")).strip(), str(data.get("full_name", "")).strip(),
+            str(data.get("profile_url", "")).strip()
+        )
+        return jsonify(result), 201
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except Exception:
+        app.logger.exception("Ошибка сохранения заявки на контест")
+        return jsonify({"error": "Не удалось сохранить заявку."}), 500
