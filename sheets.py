@@ -1324,10 +1324,8 @@ def contest_submission_info(vk_id=''):
     reason = ''
     if not start or not end:
         reason = 'Не указаны даты начала или окончания приёма работ.'
-    elif now < start:
-        reason = f'Приём работ начнётся {start.strftime("%d.%m.%Y %H:%M")} (МСК).'
-    elif now > end:
-        reason = 'Приём работ завершён.'
+    elif not is_open:
+        reason = 'Время приема работ закончилось. Пожалуйста, ожидайте старт следующего контеста.'
 
     existing = None
     normalized_id = str(vk_id or '').strip()
