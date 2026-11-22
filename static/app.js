@@ -1429,6 +1429,13 @@ async function loadContestSubmissionForm() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.error || "Не удалось сохранить заявку.");
       message.textContent = result.message || "Заявка сохранена.";
+      const chatLabel = document.createTextNode(" Ссылка в чат Контеста: ");
+      const chatLink = document.createElement("a");
+      chatLink.href = "https://clck.ru/3XAihc";
+      chatLink.textContent = "https://clck.ru/3XAihc";
+      chatLink.target = "_blank";
+      chatLink.rel = "noopener noreferrer";
+      message.append(chatLabel, chatLink);
       submit.textContent = "Сохранить изменения";
     } catch (error) {
       message.textContent = error.message || "Ошибка отправки заявки.";
