@@ -1336,6 +1336,37 @@ async function loadPeriodSummary() {
 document.addEventListener("DOMContentLoaded", initPeriodSummary);
 
 
+// Меню раздела «Контест»
+(function initContestMenu() {
+  const trigger = document.getElementById("contestMenuOpen");
+  const menu = document.getElementById("contestMenu");
+  const submissionButton = document.getElementById("contestSubmissionOpen");
+  const submissionSection = document.getElementById("contestSubmissionSection");
+  if (!trigger || !menu) return;
+
+  trigger.addEventListener("click", event => {
+    event.stopPropagation();
+    menu.hidden = !menu.hidden;
+    trigger.setAttribute("aria-expanded", String(!menu.hidden));
+  });
+
+  submissionButton?.addEventListener("click", () => {
+    document.querySelectorAll(".hero-report").forEach(item => { item.hidden = item !== submissionSection; });
+    submissionSection.hidden = false;
+    menu.hidden = true;
+    trigger.setAttribute("aria-expanded", "false");
+    submissionSection.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+
+  document.addEventListener("click", event => {
+    if (!event.target.closest(".contest-menu-wrap")) {
+      menu.hidden = true;
+      trigger.setAttribute("aria-expanded", "false");
+    }
+  });
+})();
+
+
 // =========================
 // Голосование за участников контеста
 // =========================
@@ -1350,6 +1381,10 @@ document.addEventListener("DOMContentLoaded", initPeriodSummary);
   if (!openButton || !section || !form) return;
 
   openButton.addEventListener("click", async () => {
+    const contestMenu = document.getElementById("contestMenu");
+    const contestTrigger = document.getElementById("contestMenuOpen");
+    if (contestMenu) contestMenu.hidden = true;
+    if (contestTrigger) contestTrigger.setAttribute("aria-expanded", "false");
     document.querySelectorAll(".hero-report").forEach(item => { item.hidden = item !== section; });
     const menu = document.getElementById("reportsMenu");
     if (menu) menu.hidden = true;
